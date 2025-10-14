@@ -1499,30 +1499,57 @@ struct MentorsView: View {
     }
     
     private func loadMentors() {
-        mentors = [
-            MentorProfile(
-                id: "1",
-                name: "Dr. Sarah Chen",
-                specialty: "STEM Applications",
-                experience: "10+ years",
-                contactInfo: "sarah.chen@example.com",
-                bio: "Former MIT admissions officer with 10+ years experience helping students with STEM applications. Specializes in engineering and computer science programs.",
-                rating: 4.9,
-                sessionsCompleted: 150
-            ),
-            MentorProfile(
-                id: "2",
-                name: "Marcus Johnson",
-                specialty: "Scholarship Strategy",
-                experience: "8+ years",
-                contactInfo: "marcus.j@example.com",
-                bio: "Scholarship expert who has helped students secure over $2M in funding. Focuses on merit-based and need-based scholarships.",
-                rating: 4.8,
-                sessionsCompleted: 200
-            )
-            // ... remaining mentor seeds unchanged
-        ]
+        ensureSignedIn {
+            let db = Firestore.firestore()
+            db.collection("mentor")
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        print("Mentors load error: \(error.localizedDescription)")
+                        self.mentors = []
+                        return
+                    }
+
+                    let docs = snapshot?.documents ?? []
+                    self.mentors = docs.compactMap { doc in
+                        let data = doc.data()
+
+                        let name = (data["name"] as? String) ?? "Mentor"
+                        let email = (data["email"] as? String) ?? ""
+                        let phoneAny = data["phone_number"] ?? ""
+                        let phone = (phoneAny as? String) ?? String(describing: phoneAny)
+                        let bio = (data["description"] as? String) ?? ""
+
+                        // specialty might be [String] OR (from your screenshot) a single string like
+                        // '["Scholarship strategy","college applications","financial aid"]'
+                        let specialtyText: String = {
+                            if let arr = data["specialty"] as? [String] {
+                                return arr.joined(separator: ", ")
+                            } else if let s = data["specialty"] as? String {
+                                return s.trimmingCharacters(in: .whitespacesAndNewlines)
+                            } else {
+                                return ""
+                            }
+                        }()
+
+                        // optional fields; default if not present
+                        let rating = (data["rating"] as? Double) ?? 4.8
+                        let sessions = (data["sessionsCompleted"] as? Int) ?? 100
+
+                        return MentorProfile(
+                            id: doc.documentID,
+                            name: name,
+                            specialty: specialtyText.isEmpty ? "Mentoring" : specialtyText,
+                            experience: (data["experience"] as? String) ?? "—",
+                            contactInfo: email.isEmpty ? phone : email,
+                            bio: bio,
+                            rating: rating,
+                            sessionsCompleted: sessions
+                        )
+                    }
+                }
+        }
     }
+
 }
 
 struct MentorProfile: Identifiable {
@@ -1707,19 +1734,44 @@ struct ResourcesView: View {
     }
     
     private func loadResources() {
-        resources = [
-            ResourceItem(
-                id: "1",
-                title: "FAFSA Application",
-                description: "Free Application for Federal Student Aid - Apply for financial aid",
-                url: "https://studentaid.gov/h/apply-for-aid/fafsa",
-                category: "Financial Aid",
-                icon: "dollarsign.circle.fill",
-                isExternal: true
-            )
-            // ... remaining seeds unchanged
-        ]
+        ensureSignedIn {
+            let db = Firestore.firestore()
+            db.collection("resources")
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        print("Resources load error: \(error.localizedDescription)")
+                        self.resources = []
+                        return
+                    }
+
+                    let docs = snapshot?.documents ?? []
+                    self.resources = docs.compactMap { doc in
+                        let data = doc.data()
+                        let title = (data["name"] as? String)
+                                 ?? (data["title"] as? String)
+                                 ?? "Resource"
+                        let link = (data["link"] as? String) ?? ""
+                        let description = (data["description"] as? String) ?? ""
+
+                        // Optional/derived fields (use sensible defaults if not stored)
+                        let category = (data["category"] as? String) ?? "General"
+                        let icon = (data["icon"] as? String) ?? "link"
+                        let isExternal = (data["isExternal"] as? Bool) ?? true
+
+                        return ResourceItem(
+                            id: doc.documentID,
+                            title: title,
+                            description: description,
+                            url: link,
+                            category: category,
+                            icon: icon,
+                            isExternal: isExternal
+                        )
+                    }
+                }
+        }
     }
+
 }
 
 struct ResourceItem: Identifiable {
@@ -1804,6 +1856,14 @@ struct ResourceCard: View {
         .shadow(color: .applixyLight, radius: 6, x: 0, y: 3)
     }
 }
+
+// MARK: - Shared: ensure Firebase auth, then run
+func ensureSignedIn(_ then: @escaping () -> Void) {
+    if Auth.auth().currentUser != nil { then(); return }
+    Auth.auth().signInAnonymously { _, _ in then() }
+}
+
+// Mark: Preview
 
 #Preview {
     ContentView()
