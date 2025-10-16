@@ -46,19 +46,30 @@ extension Color {
 
 struct ContentView: View {
     @State private var showingOnboarding = false
+    @State private var showingSignIn = false
     @State private var currentStep = 0
     @State private var userProfile = UserProfileData()
     @State private var showingMainApp = false
     
     var body: some View {
-        if showingOnboarding {
+        if showingMainApp {
+            MainTabView()
+        } else if showingOnboarding {
             OnboardingFlowView(
                 currentStep: $currentStep,
                 userProfile: $userProfile,
                 showingMainApp: $showingMainApp
             )
+        } else if showingSignIn {
+            SignInView(
+                showingMainApp: $showingMainApp,
+                showingSignIn: $showingSignIn
+            )
         } else {
-            LandingPageView(showingOnboarding: $showingOnboarding)
+            LandingPageView(
+                showingOnboarding: $showingOnboarding,
+                showingSignIn: $showingSignIn
+            )
         }
     }
 }
@@ -66,6 +77,7 @@ struct ContentView: View {
 // MARK: - Landing Page View
 struct LandingPageView: View {
     @Binding var showingOnboarding: Bool
+    @Binding var showingSignIn: Bool
     @State private var logoScale: CGFloat = 0.8
     @State private var logoOpacity: Double = 0.0
     @State private var textOffset: CGFloat = 50
@@ -129,18 +141,10 @@ struct LandingPageView: View {
                             .offset(y: textOffset)
                             .opacity(textOpacity)
                         
-                        Text("Discover your perfect opportunities")
+                        Text("Sign in to continue")
                             .font(.title2)
-                            .foregroundColor(.applixySecondary)
-                            .multilineTextAlignment(.center)
-                            .offset(y: textOffset)
-                            .opacity(textOpacity)
-                        
-                        Text("Find scholarships, colleges, and programs tailored just for you")
-                            .font(.subheadline)
-                            .foregroundColor(.applixySecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.applixyDark)
                             .offset(y: textOffset)
                             .opacity(textOpacity)
                     }
@@ -154,22 +158,19 @@ struct LandingPageView: View {
                 
                 Spacer()
                 
-                // Get Started Button
+                // Sign In/Sign Up Buttons
+                VStack(spacing: 16) {
+                    // Sign in with email button
                 Button(action: {
                     withAnimation(.easeInOut(duration: 0.5)) {
-                        showingOnboarding = true
+                            showingSignIn = true
                     }
                 }) {
-                    HStack(spacing: 12) {
-                        Text("Get Started")
+                        Text("Sign in with email")
                             .font(.title3)
                             .fontWeight(.semibold)
-                        
-                        Image(systemName: "arrow.right")
-                            .font(.title3)
-                    }
                     .foregroundColor(.applixyWhite)
-                    .padding(.horizontal, 40)
+                            .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
@@ -178,11 +179,34 @@ struct LandingPageView: View {
                             endPoint: .trailing
                         )
                     )
-                    .cornerRadius(30)
-                    .shadow(color: .applixyPrimary.opacity(0.4), radius: 15, x: 0, y: 8)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
                 .offset(y: buttonOffset)
                 .opacity(buttonOpacity)
+                    
+                    // Sign in with phone button
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showingSignIn = true
+                        }
+                    }) {
+                        Text("Sign in with phone")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.applixySecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.applixyWhite)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.applixySecondary, lineWidth: 1)
+                            )
+                            .cornerRadius(12)
+                    }
+                    .offset(y: buttonOffset)
+                    .opacity(buttonOpacity)
+                }
                 .onAppear {
                     withAnimation(.easeOut(duration: 0.8).delay(1.2)) {
                         buttonOffset = 0
@@ -191,6 +215,133 @@ struct LandingPageView: View {
                 }
                 .scaleEffect(buttonOpacity == 1.0 ? 1.0 : 0.9)
                 .animation(.easeInOut(duration: 0.2), value: buttonOpacity)
+                .padding(.horizontal, 24)
+                
+                // Sign up link
+                Button("Don't have an account? Sign up") {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        showingOnboarding = true
+                    }
+                }
+                .font(.subheadline)
+                .foregroundColor(.applixyPrimary)
+                .padding(.top, 8)
+                .offset(y: buttonOffset)
+                .opacity(buttonOpacity)
+                
+                // Or sign up with section
+                VStack(spacing: 20) {
+                    // Or sign up with divider
+                    HStack {
+                        Rectangle()
+                            .fill(Color.applixyLight)
+                            .frame(height: 1)
+                        
+                        Text("or sign up with")
+                            .font(.subheadline)
+                            .foregroundColor(.applixyDark)
+                            .padding(.horizontal, 16)
+                        
+                        Rectangle()
+                            .fill(Color.applixyLight)
+                            .frame(height: 1)
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    // Social media buttons
+                    HStack(spacing: 16) {
+                        // Facebook button
+                        Button(action: {
+                            // Facebook sign up action
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.applixyWhite)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.applixySecondary, lineWidth: 1)
+                                    )
+                                    .frame(width: 60, height: 60)
+                                
+                                Text("f")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
+                        }
+                        
+                        // Google button
+                        Button(action: {
+                            // Google sign up action
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.applixyWhite)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.applixySecondary, lineWidth: 1)
+                                    )
+                                    .frame(width: 60, height: 60)
+                                
+                                Text("G")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
+                        }
+                        
+                        // Apple button
+                        Button(action: {
+                            // Apple sign up action
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.applixyWhite)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.applixySecondary, lineWidth: 1)
+                                    )
+                                    .frame(width: 60, height: 60)
+                                
+                                Image(systemName: "apple.logo")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
+                        }
+                    }
+                    .offset(y: buttonOffset)
+                    .opacity(buttonOpacity)
+                }
+                .onAppear {
+                    withAnimation(.easeOut(duration: 0.8).delay(1.4)) {
+                        buttonOffset = 0
+                        buttonOpacity = 1.0
+                    }
+                }
+                
+                // Terms and Privacy links
+                HStack(spacing: 20) {
+                    Button("Terms of use") {
+                        // Terms of use action
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.applixySecondary)
+                    
+                    Button("Privacy Policy") {
+                        // Privacy policy action
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.applixySecondary)
+                }
+                .offset(y: buttonOffset)
+                .opacity(buttonOpacity)
+                .onAppear {
+                    withAnimation(.easeOut(duration: 0.8).delay(1.6)) {
+                        buttonOffset = 0
+                        buttonOpacity = 1.0
+                    }
+                }
                 
                 // Decorative elements
                 HStack(spacing: 8) {
@@ -209,6 +360,179 @@ struct LandingPageView: View {
                 }
                 .padding(.bottom, 50)
             }
+        }
+    }
+}
+
+// MARK: - Sign In View
+struct SignInView: View {
+    @Binding var showingMainApp: Bool
+    @Binding var showingSignIn: Bool
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var password = ""
+    @State private var isEmailSignIn = true
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.applixyBackground
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 40) {
+                    Spacer()
+                    
+                    // Header
+                    VStack(spacing: 20) {
+                        // Logo
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.applixySecondary, .applixyLight],
+                                        startPoint: .bottomTrailing,
+                                        endPoint: .topLeading
+                                    )
+                                )
+                                .frame(width: 80, height: 80)
+                                .shadow(color: .applixyPrimary.opacity(0.2), radius: 10, x: 0, y: 5)
+                            
+                            Circle()
+                                .stroke(Color.applixyPrimary, lineWidth: 4)
+                                .frame(width: 80, height: 80)
+                            
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 30, weight: .bold))
+                                .foregroundColor(.applixyDark)
+                        }
+                        
+                        VStack(spacing: 8) {
+                            Text("Welcome back!")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .foregroundColor(.applixyDark)
+                            
+                            Text("Sign in to your account")
+                                .font(.subheadline)
+                                .foregroundColor(.applixySecondary)
+                        }
+                    }
+                    
+                    // Sign in method toggle
+                    HStack(spacing: 0) {
+                        Button("Email") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isEmailSignIn = true
+                            }
+                        }
+                        .foregroundColor(isEmailSignIn ? .applixyWhite : .applixySecondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                        .background(
+                            isEmailSignIn ? 
+                            Color.applixyPrimary : 
+                            Color.clear
+                        )
+                        .cornerRadius(8)
+                        
+                        Button("Phone") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isEmailSignIn = false
+                            }
+                        }
+                        .foregroundColor(!isEmailSignIn ? .applixyWhite : .applixySecondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                        .background(
+                            !isEmailSignIn ? 
+                            Color.applixyPrimary : 
+                            Color.clear
+                        )
+                        .cornerRadius(8)
+                    }
+                    .background(Color.applixyLight.opacity(0.3))
+                    .cornerRadius(8)
+                    
+                    // Form fields
+                    VStack(spacing: 20) {
+                        if isEmailSignIn {
+                            CustomTextField(
+                                title: "Email",
+                                text: $email,
+                                icon: "envelope.fill",
+                                keyboardType: .emailAddress
+                            )
+                        } else {
+                            CustomTextField(
+                                title: "Phone Number",
+                                text: $phone,
+                                icon: "phone.fill",
+                                keyboardType: .phonePad
+                            )
+                        }
+                        
+                        CustomTextField(
+                            title: "Password",
+                            text: $password,
+                            icon: "lock.fill",
+                            keyboardType: .default
+                        )
+                    }
+                    
+                    // Sign in button
+                    Button(action: signIn) {
+                        Text("Sign In")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.applixyWhite)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [.applixyPrimary, .applixySecondary],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(12)
+                            .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .disabled(email.isEmpty && phone.isEmpty || password.isEmpty)
+                    .opacity((email.isEmpty && phone.isEmpty || password.isEmpty) ? 0.6 : 1.0)
+                    
+                    // Forgot password
+                    Button("Forgot password?") {
+                        // Handle forgot password
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.applixyPrimary)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+            }
+            .navigationBarHidden(true)
+            .alert("Sign In Error", isPresented: $showingAlert) {
+                Button("OK") { }
+            } message: {
+                Text(alertMessage)
+            }
+        }
+    }
+    
+    private func signIn() {
+        // Mock sign in logic - replace with actual authentication
+        if isEmailSignIn && !email.isEmpty && !password.isEmpty {
+            // Email sign in
+            showingMainApp = true
+        } else if !isEmailSignIn && !phone.isEmpty && !password.isEmpty {
+            // Phone sign in
+            showingMainApp = true
+        } else {
+            alertMessage = "Please fill in all required fields"
+            showingAlert = true
         }
     }
 }
@@ -561,7 +885,7 @@ struct InterestsView: View {
     @Binding var userProfile: UserProfileData
     
     private let interestOptions = [
-        "STEM", "Arts", "Leadership", "Business", 
+        "STEM", "Arts", "Leadership", "Business",
         "Community Service", "Women in Tech", "Minority Programs"
     ]
     
@@ -610,7 +934,7 @@ struct InterestTag: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(
-                    isSelected ? 
+                    isSelected ?
                     LinearGradient(
                         colors: [.applixyPrimary, .applixySecondary],
                         startPoint: .leading,
@@ -638,27 +962,171 @@ struct InterestTag: View {
 
 // MARK: - Main Tab View
 struct MainTabView: View {
+    @State private var selectedTab = 0
+    
     var body: some View {
-        TabView {
+        ZStack {
+            // Main content
+            Group {
+                switch selectedTab {
+                case 0:
             DiscoveryView()
-                .tabItem {
-                    Image(systemName: "house.fill")
-                    Text("Discovery")
+                case 1:
+                    SavedView()
+                case 2:
+                    MentorsView()
+                case 3:
+                    UpdatesView()
+                case 4:
+                    ResourcesView()
+                default:
+                    DiscoveryView()
                 }
+            }
             
-            MentorsView()
-                .tabItem {
-                    Image(systemName: "person.2.fill")
-                    Text("Mentors")
-                }
-            
-            ResourcesView()
-                .tabItem {
-                    Image(systemName: "link")
-                    Text("Resources")
-                }
+            // Custom Tab Bar
+            VStack {
+                Spacer()
+                
+                CustomTabBar(selectedTab: $selectedTab)
+            }
         }
-        .accentColor(.applixyPrimary)
+    }
+}
+
+// MARK: - Custom Tab Bar
+struct CustomTabBar: View {
+    @Binding var selectedTab: Int
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            // Discover (Home) - Active state
+            TabBarButton(
+                icon: "house.fill",
+                isSelected: selectedTab == 0,
+                action: { selectedTab = 0 }
+            )
+            
+            // Saved (Star)
+            TabBarButton(
+                icon: "star.fill",
+                isSelected: selectedTab == 1,
+                action: { selectedTab = 1 }
+            )
+            
+            // Mentors (People)
+            TabBarButton(
+                icon: "person.2.fill",
+                isSelected: selectedTab == 2,
+                action: { selectedTab = 2 }
+            )
+            
+            // Updates (Calendar)
+            TabBarButton(
+                icon: "calendar",
+                isSelected: selectedTab == 3,
+                action: { selectedTab = 3 }
+            )
+            
+            // Resources (Compass)
+            TabBarButton(
+                icon: "location.north.fill",
+                isSelected: selectedTab == 4,
+                action: { selectedTab = 4 }
+            )
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 25)
+                .fill(Color.applixyWhite)
+                .shadow(color: .applixyPrimary.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+    }
+}
+
+// MARK: - Tab Bar Button
+struct TabBarButton: View {
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isSelected {
+                    Circle()
+                        .fill(Color.applixyPrimary)
+                        .frame(width: 50, height: 50)
+                }
+                
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(isSelected ? .applixyWhite : .applixySecondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
+    }
+}
+
+// MARK: - Saved View
+struct SavedView: View {
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.applixyBackground
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 30) {
+                    Image(systemName: "star.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.applixyLight)
+                    
+                    Text("Saved Opportunities")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.applixyDark)
+                    
+                    Text("Your saved opportunities will appear here")
+                        .foregroundColor(.applixySecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            .navigationTitle("Saved")
+        }
+    }
+}
+
+// MARK: - Updates View
+struct UpdatesView: View {
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.applixyBackground
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 30) {
+                    Image(systemName: "calendar.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundColor(.applixyLight)
+                    
+                    Text("Updates")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.applixyDark)
+                    
+                    Text("Stay updated with the latest opportunities and news")
+                        .foregroundColor(.applixySecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+            }
+            .navigationTitle("Updates")
+        }
     }
 }
 
@@ -671,6 +1139,7 @@ struct DiscoveryView: View {
     @State private var selectedOpportunity: OpportunityData?
     @State private var showingSavedAlert = false
     @State private var showingSkippedAlert = false
+    @State private var swipeDirection: SwipeDirection = .none
     
     var body: some View {
         NavigationView {
@@ -684,9 +1153,6 @@ struct DiscoveryView: View {
                     
                     // Card Stack
                     cardStackView
-                    
-                    // Action Buttons
-                    actionButtonsView
                 }
             }
             //.navigationTitle("Discovery")
@@ -698,6 +1164,7 @@ struct DiscoveryView: View {
                     OpportunityDetailView(opportunity: opportunity)
                 }
             }
+            /*
             .alert("Opportunity Saved!", isPresented: $showingSavedAlert) {
                 Button("OK") { }
             } message: {
@@ -707,7 +1174,7 @@ struct DiscoveryView: View {
                 Button("OK") { }
             } message: {
                 Text("You can always find this opportunity again later.")
-            }
+            }*/
         }
     }
     
@@ -770,100 +1237,101 @@ struct DiscoveryView: View {
                     allCaughtUpView
                 } else {
                     let currentOpportunity = opportunities[currentIndex]
+                    ZStack {
+                        // Main card
                     SwipeCardView(
                         opportunity: currentOpportunity,
                         dragOffset: $dragOffset,
+                            swipeDirection: $swipeDirection,
                         onSwipeLeft: {
                             skipOpportunity()
                         },
-                        onSwipeUp: {
-                            selectedOpportunity = currentOpportunity
-                            showingDetail = true
+                            onSwipeRight: {
+                                saveOpportunity(currentOpportunity)
                         },
-                        onSave: {
+                            onHeartTap: {
                             saveOpportunity(currentOpportunity)
                         }
                     )
                     .gesture(
                         DragGesture()
                             .onChanged { value in
+                                    print("Drag changed: \(value.translation.width)")
                                 dragOffset = value.translation
+                                    updateSwipeDirection(value: value)
                             }
                             .onEnded { value in
+                                    print("Drag ended: \(value.translation.width)")
                                 handleSwipeGesture(value: value, opportunity: currentOpportunity)
                             }
                     )
-                }
-            }
-            .frame(height: 500)
-        }
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Action Buttons
-    private var actionButtonsView: some View {
-        VStack(spacing: 0) {
-            // Add margin between card and buttons
+                        
+                        // Overlay action buttons (positioned like in your image)
+                        VStack {
             Spacer()
-                .frame(height: 30)
             
-            HStack(spacing: 40) {
-                // Skip Button
+                            HStack(spacing: 20) {
+                                // X button (left)
                 Button(action: {
-                    if currentIndex < opportunities.count {
                         skipOpportunity()
-                    }
-                }) {
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.applixyWhite)
+                                            .frame(width: 60, height: 60)
+                                            .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
+                                        
                         Image(systemName: "xmark")
                             .font(.title2)
+                                            .fontWeight(.bold)
                             .foregroundColor(.red)
-                            .frame(width: 60, height: 60)
-                            .background(Color.red.opacity(0.1))
-                            .clipShape(Circle())
                     }
-                    .disabled(currentIndex >= opportunities.count)
+                                }
                 
-                // Info Button
+                                // Heart button (center)
                 Button(action: {
-                    if currentIndex < opportunities.count {
-                        selectedOpportunity = opportunities[currentIndex]
-                        showingDetail = true
-                    }
-                }) {
-                    Image(systemName: "info.circle")
-                        .font(.title2)
-                        .foregroundColor(.applixySecondary)
-                        .frame(width: 60, height: 60)
-                        .background(Color.applixyLight)
-                        .clipShape(Circle())
-                }
-                .disabled(currentIndex >= opportunities.count)
-                
-                // Save Button
+                                    saveOpportunity(currentOpportunity)
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.applixyWhite)
+                                            .frame(width: 70, height: 70)
+                                            .shadow(color: .applixyPrimary.opacity(0.3), radius: 10, x: 0, y: 5)
+                                        
+                                        Image(systemName: "heart.fill")
+                                            .font(.title)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.applixyPrimary)
+                                    }
+                                }
+                                
+                                // Star button (right)
                 Button(action: {
-                    if currentIndex < opportunities.count {
-                        saveOpportunity(opportunities[currentIndex])
-                    }
-                }) {
-                    Image(systemName: "heart.fill")
-                        .font(.title2)
-                        .foregroundColor(.applixyWhite)
+                                    saveOpportunity(currentOpportunity)
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.applixyWhite)
                         .frame(width: 60, height: 60)
-                        .background(
-                            LinearGradient(
-                                colors: [.applixyPrimary, .applixySecondary],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .clipShape(Circle())
-                        .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                                            .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
+                                        
+                                        Image(systemName: "star.fill")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.applixyPrimary)
+                                    }
+                                }
+                            }
+                            .offset(y: 20) // Position buttons slightly overlapping the card
+                        }
+                    }
                 }
-                .disabled(currentIndex >= opportunities.count)
             }
+            .frame(height: 400)
         }
-        .padding(.bottom, 50)
+        .padding(.horizontal, 40)
     }
+    
     
     // MARK: - Empty State
     private var emptyStateView: some View {
@@ -1013,28 +1481,46 @@ struct DiscoveryView: View {
                 tags: ["STEM", "Research", "Women in Tech"]
             )
         ]
+        print("Loaded \(opportunities.count) opportunities")
+        currentIndex = 0
+    }
+    
+    private func updateSwipeDirection(value: DragGesture.Value) {
+        let threshold: CGFloat = 50
+        
+        if abs(value.translation.width) > threshold {
+            if value.translation.width > 0 {
+                swipeDirection = .right
+            } else {
+                swipeDirection = .left
+            }
+        } else {
+            swipeDirection = .none
+        }
     }
     
     private func handleSwipeGesture(value: DragGesture.Value, opportunity: OpportunityData) {
         let threshold: CGFloat = 100
+        print("Swipe gesture ended - translation: \(value.translation.width), threshold: \(threshold)")
         
-        /*withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            if abs(value.translation.x) > threshold {
-                if value.translation.x > 0 {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            if abs(value.translation.width) > threshold {
+                if value.translation.width > 0 {
                     // Swipe right - save
+                    print("Swipe right detected - saving opportunity")
                     saveOpportunity(opportunity)
                 } else {
                     // Swipe left - skip
+                    print("Swipe left detected - skipping opportunity")
                     skipOpportunity()
                 }
-            } else if value.translation.y < -threshold {
-                // Swipe up - show details
-                selectedOpportunity = opportunity
-                showingDetail = true
-            }
-            
+            } else {
+                // Return to original position
+                print("Swipe not far enough - returning to original position")
             dragOffset = .zero
-        }*/
+            }
+            swipeDirection = .none
+        }
     }
     
     private func saveOpportunity(_ opportunity: OpportunityData) {
@@ -1050,13 +1536,21 @@ struct DiscoveryView: View {
     }
     
     private func nextOpportunity() {
+        print("Current index: \(currentIndex), Total opportunities: \(opportunities.count)")
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             currentIndex += 1
+            dragOffset = .zero
+            swipeDirection = .none
         }
+        print("New index: \(currentIndex)")
     }
 }
 
 // MARK: - Data Models
+enum SwipeDirection {
+    case none, left, right, up
+}
+
 struct OpportunityData: Identifiable {
     let id: String
     let title: String
@@ -1073,14 +1567,44 @@ struct OpportunityData: Identifiable {
 struct SwipeCardView: View {
     let opportunity: OpportunityData
     @Binding var dragOffset: CGSize
+    @Binding var swipeDirection: SwipeDirection
     let onSwipeLeft: () -> Void
-    let onSwipeUp: () -> Void
-    let onSave: () -> Void
+    let onSwipeRight: () -> Void
+    let onHeartTap: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Header
-            HStack {
+        ZStack {
+            // Main Card
+            VStack(spacing: 0) {
+                // Image placeholder with deadline tag
+                ZStack(alignment: .topLeading) {
+                    // Placeholder image (you can replace with actual images)
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.applixySecondary, .applixyLight],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(height: 200)
+                    
+                    // Deadline tag
+                    Text("DUE: \(opportunity.deadline, formatter: dateFormatter)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.applixyWhite)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.applixyDark.opacity(0.8))
+                        .cornerRadius(12)
+                        .padding(.top, 16)
+                        .padding(.leading, 16)
+                }
+                
+                // Card content
+                VStack(alignment: .leading, spacing: 12) {
+                    // Title and type
                 VStack(alignment: .leading, spacing: 8) {
                     Text(opportunity.title)
                         .font(.title2)
@@ -1094,20 +1618,11 @@ struct SwipeCardView: View {
                         Text(opportunity.type)
                             .font(.subheadline)
                             .foregroundColor(.applixySecondary)
-                    }
-                }
-                
-                Spacer()
-                
-                Button(action: onSave) {
-                    Image(systemName: "heart")
-                        .font(.title2)
-                        .foregroundColor(.applixyPrimary)
                 }
             }
             
-            // Deadline and Award
-            VStack(spacing: 12) {
+                    // Deadline and Award
+                    VStack(spacing: 6) {
                 HStack {
                     Image(systemName: "calendar")
                         .foregroundColor(.red)
@@ -1125,11 +1640,11 @@ struct SwipeCardView: View {
                 }
             }
             
-            // Eligibility
-            Text(opportunity.eligibility)
-                .font(.body)
-                .foregroundColor(.applixyDark)
-                .lineLimit(3)
+                    // Description
+                    Text(opportunity.details.isEmpty ? opportunity.eligibility : opportunity.details)
+                        .font(.body)
+                        .foregroundColor(.applixyDark)
+                        .lineLimit(2)
             
             // Tags
             if !opportunity.tags.isEmpty {
@@ -1148,39 +1663,9 @@ struct SwipeCardView: View {
                     .padding(.horizontal, 1)
                 }
             }
-            
-            Spacer()
-            
-            // Action Buttons
-            HStack {
-                Button("Skip") {
-                    onSwipeLeft()
                 }
-                .foregroundColor(.red)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(20)
-                
-                Spacer()
-                
-                Button("More Info") {
-                    onSwipeUp()
-                }
-                .foregroundColor(.applixyWhite)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(
-                    LinearGradient(
-                        colors: [.applixyPrimary, .applixySecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(20)
+                .padding(16)
             }
-        }
-        .padding(24)
         .background(Color.applixyWhite)
         .cornerRadius(20)
         .shadow(
@@ -1189,8 +1674,47 @@ struct SwipeCardView: View {
             x: 0,
             y: 10
         )
+            
+            // Swipe feedback overlays
+            if swipeDirection != .none {
+                ZStack {
+                    if swipeDirection == .left {
+                        // Red overlay for left swipe (X)
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.red.opacity(0.2))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 60, weight: .bold))
+                                        .foregroundColor(.red)
+                                    Text("SKIP")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.red)
+                                }
+                            )
+                    } else if swipeDirection == .right {
+                        // Green overlay for right swipe (Star)
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.green.opacity(0.2))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 60, weight: .bold))
+                                        .foregroundColor(.green)
+                                    Text("SAVE")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.green)
+                                }
+                            )
+                    }
+                }
+            }
+        }
         .offset(x: dragOffset.width, y: dragOffset.height)
         .rotationEffect(.degrees(dragOffset.width / 20))
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: dragOffset)
     }
     
     private var typeIcon: String {
