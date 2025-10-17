@@ -1199,10 +1199,7 @@ struct SavedView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(.applixyDark)
                         
-                        Text("Your saved opportunities will appear here")
-                            .foregroundColor(.applixySecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
+                        
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
