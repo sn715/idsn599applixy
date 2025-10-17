@@ -47,6 +47,7 @@ extension Color {
 struct ContentView: View {
     @State private var showingOnboarding = false
     @State private var showingSignIn = false
+    @State private var showingCreatePassword = false
     @State private var currentStep = 0
     @State private var userProfile = UserProfileData()
     @State private var showingMainApp = false
@@ -55,6 +56,11 @@ struct ContentView: View {
     var body: some View {
         if showingMainApp {
             MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
+        } else if showingCreatePassword {
+            CreatePasswordView(
+                showingCreatePassword: $showingCreatePassword,
+                showingOnboarding: $showingOnboarding
+            )
         } else if showingOnboarding {
             OnboardingFlowView(
                 currentStep: $currentStep,
@@ -70,7 +76,8 @@ struct ContentView: View {
         } else {
             LandingPageView(
                 showingOnboarding: $showingOnboarding,
-                showingSignIn: $showingSignIn
+                showingSignIn: $showingSignIn,
+                showingCreatePassword: $showingCreatePassword
             )
         }
     }
@@ -80,6 +87,7 @@ struct ContentView: View {
 struct LandingPageView: View {
     @Binding var showingOnboarding: Bool
     @Binding var showingSignIn: Bool
+    @Binding var showingCreatePassword: Bool
     
     var body: some View {
         ZStack {
@@ -138,7 +146,7 @@ struct LandingPageView: View {
                     
                     // Sign up button
                     Button(action: {
-                        showingOnboarding = true
+                        showingCreatePassword = true
                     }) {
                         Text("Sign up")
                             .font(.system(size: 16))
@@ -158,7 +166,7 @@ struct LandingPageView: View {
                 
                 // Sign up link
                 Button("Don't have an account? Sign up") {
-                    showingOnboarding = true
+                    showingCreatePassword = true
                 }
                 .font(.subheadline)
                 .foregroundColor(.applixyPrimary)
@@ -270,6 +278,206 @@ struct LandingPageView: View {
     }
 }
 
+// MARK: - Create Password View
+struct CreatePasswordView: View {
+    @Binding var showingCreatePassword: Bool
+    @Binding var showingOnboarding: Bool
+    @State private var email = ""
+    @State private var password = ""
+    @State private var confirmPassword = ""
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
+    
+    var body: some View {
+        ZStack {
+            Color.applixyBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Back button
+                HStack {
+                    Button(action: {
+                        showingCreatePassword = false
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.applixySecondary)
+                    }
+                    .padding(.top, 20)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                
+                // Standard Header
+                StandardHeaderView(
+                    title: "Create Account",
+                    subtitle: " "
+                )
+                
+                ScrollView {
+                    VStack(spacing: 30) {
+                        // Email field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Email Address")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            HStack {
+                                Image(systemName: "envelope.fill")
+                                    .foregroundColor(.applixySecondary)
+                                    .frame(width: 20)
+                                
+                                TextField("Enter your email", text: $email)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .keyboardType(.emailAddress)
+                                    .autocapitalization(.none)
+                            }
+                            .padding()
+                            .background(Color.applixyWhite)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                        }
+                        
+                        // Password field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Password")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.applixySecondary)
+                                    .frame(width: 20)
+                                
+                                SecureField("Create a password", text: $password)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                            }
+                            .padding()
+                            .background(Color.applixyWhite)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                        }
+                        
+                        // Confirm Password field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Confirm Password")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.applixySecondary)
+                                    .frame(width: 20)
+                                
+                                SecureField("Confirm your password", text: $confirmPassword)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                            }
+                            .padding()
+                            .background(Color.applixyWhite)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                        }
+                        
+                        // Password requirements
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Password Requirements:")
+                                .font(.caption)
+                            .fontWeight(.semibold)
+                                .foregroundColor(.applixyDark)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Image(systemName: password.count >= 8 ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(password.count >= 8 ? .green : .applixySecondary)
+                                        .font(.caption)
+                                    Text("At least 8 characters")
+                                        .font(.caption)
+                                        .foregroundColor(.applixySecondary)
+                                }
+                                
+                                HStack {
+                                    Image(systemName: password.contains(where: { $0.isUppercase }) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(password.contains(where: { $0.isUppercase }) ? .green : .applixySecondary)
+                                        .font(.caption)
+                                    Text("One uppercase letter")
+                                        .font(.caption)
+                                        .foregroundColor(.applixySecondary)
+                                }
+                                
+                                HStack {
+                                    Image(systemName: password.contains(where: { $0.isNumber }) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(password.contains(where: { $0.isNumber }) ? .green : .applixySecondary)
+                                        .font(.caption)
+                                    Text("One number")
+                                        .font(.caption)
+                                        .foregroundColor(.applixySecondary)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color.applixyLight.opacity(0.3))
+                        .cornerRadius(12)
+                        
+                        // Create Account button
+                        Button(action: createAccount) {
+                            Text("Create Account")
+                                .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.applixyWhite)
+                                .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [.applixyPrimary, .applixySecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                                .cornerRadius(12)
+                                .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+                        .disabled(!isFormValid)
+                        .opacity(isFormValid ? 1.0 : 0.6)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 40)
+                }
+            }
+        }
+        .alert("Error", isPresented: $showingAlert) {
+            Button("OK") { }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+    
+    private var isFormValid: Bool {
+        return !email.isEmpty &&
+               !password.isEmpty &&
+               !confirmPassword.isEmpty &&
+               password == confirmPassword &&
+               password.count >= 8 &&
+               password.contains(where: { $0.isUppercase }) &&
+               password.contains(where: { $0.isNumber })
+    }
+    
+    private func createAccount() {
+        if isFormValid {
+            // Here you would typically save the email and password
+            // For now, we'll just proceed to onboarding
+            showingCreatePassword = false
+            showingOnboarding = true
+        } else {
+            alertMessage = "Please ensure all fields are filled and passwords match"
+            showingAlert = true
+        }
+    }
+}
+
 // MARK: - Sign In View
 struct SignInView: View {
     @Binding var showingMainApp: Bool
@@ -293,7 +501,7 @@ struct SignInView: View {
                 Button(action: {
                             showingSignIn = false
                         }) {
-                            HStack(spacing: 8) {
+                HStack(spacing: 8) {
                                 Image(systemName: "chevron.left")
                                     .font(.system(size: 16, weight: .medium))
                                 Text("Back")
