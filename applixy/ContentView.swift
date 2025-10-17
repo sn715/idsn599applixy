@@ -50,15 +50,17 @@ struct ContentView: View {
     @State private var currentStep = 0
     @State private var userProfile = UserProfileData()
     @State private var showingMainApp = false
+    @StateObject private var savedOpportunitiesManager = SavedOpportunitiesManager()
     
     var body: some View {
         if showingMainApp {
-            MainTabView()
+            MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
         } else if showingOnboarding {
             OnboardingFlowView(
                 currentStep: $currentStep,
                 userProfile: $userProfile,
-                showingMainApp: $showingMainApp
+                showingMainApp: $showingMainApp,
+                savedOpportunitiesManager: savedOpportunitiesManager
             )
         } else if showingSignIn {
             SignInView(
@@ -78,12 +80,6 @@ struct ContentView: View {
 struct LandingPageView: View {
     @Binding var showingOnboarding: Bool
     @Binding var showingSignIn: Bool
-    @State private var logoScale: CGFloat = 0.8
-    @State private var logoOpacity: Double = 0.0
-    @State private var textOffset: CGFloat = 50
-    @State private var textOpacity: Double = 0.0
-    @State private var buttonOffset: CGFloat = 30
-    @State private var buttonOpacity: Double = 0.0
     
     var body: some View {
         ZStack {
@@ -100,59 +96,22 @@ struct LandingPageView: View {
                 
                 // Logo Section
                 VStack(spacing: 30) {
-                    // Applixy Logo
-                    ZStack {
-                        // Magnifying glass background circle
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.applixySecondary, .applixyLight],
-                                    startPoint: .bottomTrailing,
-                                    endPoint: .topLeading
-                                )
-                            )
-                            .frame(width: 120, height: 120)
-                            .shadow(color: .applixyPrimary.opacity(0.2), radius: 20, x: 0, y: 10)
-                        
-                        // Magnifying glass frame
-                        Circle()
-                            .stroke(Color.applixyPrimary, lineWidth: 8)
-                            .frame(width: 120, height: 120)
-                        
-                        // Star inside the magnifying glass
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 40, weight: .bold))
-                            .foregroundColor(.applixyDark)
-                    }
-                    .scaleEffect(logoScale)
-                    .opacity(logoOpacity)
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 1.0)) {
-                            logoScale = 1.0
-                            logoOpacity = 1.0
-                        }
-                    }
-                    
+                    // App Logo Placeholder
+                    Image("app-logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
                     // App Name and Tagline
                     VStack(spacing: 12) {
                         Text("Applixy")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .font(.system(size: 30, weight: .bold))
                             .foregroundColor(.applixyDark)
-                            .offset(y: textOffset)
-                            .opacity(textOpacity)
                         
-                        Text("Sign in to continue")
-                            .font(.title2)
+                        /*Text("Sign in to continue")
+                            .font(.system(size: 20))
                             .fontWeight(.semibold)
                             .foregroundColor(.applixyDark)
-                            .offset(y: textOffset)
-                            .opacity(textOpacity)
-                    }
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 0.8).delay(0.5)) {
-                            textOffset = 0
-                            textOpacity = 1.0
-                        }
+                            */
                     }
                 }
                 
@@ -166,14 +125,14 @@ struct LandingPageView: View {
                             showingSignIn = true
                     }
                 }) {
-                        Text("Sign in with email")
-                            .font(.title3)
-                            .fontWeight(.semibold)
+                        Text("Sign in")
+                            .font(.system(size: 20))
+                            //.fontWeight(.semibold)
                     .foregroundColor(.applixyWhite)
                             .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
-                        LinearGradient(
+                                LinearGradient(
                             colors: [.applixyPrimary, .applixySecondary],
                             startPoint: .leading,
                             endPoint: .trailing
@@ -182,18 +141,14 @@ struct LandingPageView: View {
                             .cornerRadius(12)
                             .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
-                .offset(y: buttonOffset)
-                .opacity(buttonOpacity)
                     
-                    // Sign in with phone button
+                    // Sign up button
                     Button(action: {
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            showingSignIn = true
-                        }
+                        showingOnboarding = true
                     }) {
-                        Text("Sign in with phone")
-                            .font(.title3)
-                            .fontWeight(.semibold)
+                        Text("Sign up")
+                            .font(.system(size: 16))
+                            //.fontWeight(.semibold)
                             .foregroundColor(.applixySecondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -204,30 +159,16 @@ struct LandingPageView: View {
                             )
                             .cornerRadius(12)
                     }
-                    .offset(y: buttonOffset)
-                    .opacity(buttonOpacity)
                 }
-                .onAppear {
-                    withAnimation(.easeOut(duration: 0.8).delay(1.2)) {
-                        buttonOffset = 0
-                        buttonOpacity = 1.0
-                    }
-                }
-                .scaleEffect(buttonOpacity == 1.0 ? 1.0 : 0.9)
-                .animation(.easeInOut(duration: 0.2), value: buttonOpacity)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 60)
                 
                 // Sign up link
                 Button("Don't have an account? Sign up") {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        showingOnboarding = true
-                    }
+                    showingOnboarding = true
                 }
                 .font(.subheadline)
                 .foregroundColor(.applixyPrimary)
                 .padding(.top, 8)
-                .offset(y: buttonOffset)
-                .opacity(buttonOpacity)
                 
                 // Or sign up with section
                 VStack(spacing: 20) {
@@ -238,15 +179,15 @@ struct LandingPageView: View {
                             .frame(height: 1)
                         
                         Text("or sign up with")
-                            .font(.subheadline)
+                            .font(.system(size: 12))
                             .foregroundColor(.applixyDark)
-                            .padding(.horizontal, 16)
+                            .padding(.horizontal, 10)
                         
                         Rectangle()
                             .fill(Color.applixyLight)
                             .frame(height: 1)
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 18)
                     
                     // Social media buttons
                     HStack(spacing: 16) {
@@ -284,7 +225,7 @@ struct LandingPageView: View {
                                     .frame(width: 60, height: 60)
                                 
                                 Text("G")
-                                    .font(.title2)
+                            .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.applixyPrimary)
                             }
@@ -310,14 +251,6 @@ struct LandingPageView: View {
                             }
                         }
                     }
-                    .offset(y: buttonOffset)
-                    .opacity(buttonOpacity)
-                }
-                .onAppear {
-                    withAnimation(.easeOut(duration: 0.8).delay(1.4)) {
-                        buttonOffset = 0
-                        buttonOpacity = 1.0
-                    }
                 }
                 
                 // Terms and Privacy links
@@ -326,38 +259,17 @@ struct LandingPageView: View {
                         // Terms of use action
                     }
                     .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-                    
+                            .foregroundColor(.applixySecondary)
+                        
                     Button("Privacy Policy") {
                         // Privacy policy action
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-                }
-                .offset(y: buttonOffset)
-                .opacity(buttonOpacity)
-                .onAppear {
-                    withAnimation(.easeOut(duration: 0.8).delay(1.6)) {
-                        buttonOffset = 0
-                        buttonOpacity = 1.0
-                    }
+                            .font(.subheadline)
+                            .foregroundColor(.applixySecondary)
                 }
                 
                 // Decorative elements
-                HStack(spacing: 8) {
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(Color.applixyLight)
-                            .frame(width: 8, height: 8)
-                            .opacity(0.6)
-                            .animation(
-                                .easeInOut(duration: 1.5)
-                                .repeatForever()
-                                .delay(Double(index) * 0.3),
-                                value: buttonOpacity
-                            )
-                    }
-                }
+                
                 .padding(.bottom, 50)
             }
         }
@@ -382,31 +294,30 @@ struct SignInView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 40) {
+                    // Back button
+                HStack {
+                Button(action: {
+                            showingSignIn = false
+                        }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Back")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(.applixySecondary)
+                        }
+                        .padding(.top, 20)
+                        
+                        Spacer()
+                    }
+                    //.padding(.horizontal, 24)
+                    
                     Spacer()
                     
                     // Header
                     VStack(spacing: 20) {
                         // Logo
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.applixySecondary, .applixyLight],
-                                        startPoint: .bottomTrailing,
-                                        endPoint: .topLeading
-                                    )
-                                )
-                                .frame(width: 80, height: 80)
-                                .shadow(color: .applixyPrimary.opacity(0.2), radius: 10, x: 0, y: 5)
-                            
-                            Circle()
-                                .stroke(Color.applixyPrimary, lineWidth: 4)
-                                .frame(width: 80, height: 80)
-                            
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 30, weight: .bold))
-                                .foregroundColor(.applixyDark)
-                        }
                         
                         VStack(spacing: 8) {
                             Text("Welcome back!")
@@ -486,16 +397,16 @@ struct SignInView: View {
                         Text("Sign In")
                             .font(.title3)
                             .fontWeight(.semibold)
-                            .foregroundColor(.applixyWhite)
+                    .foregroundColor(.applixyWhite)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    colors: [.applixyPrimary, .applixySecondary],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [.applixyPrimary, .applixySecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
                             .cornerRadius(12)
                             .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
@@ -542,6 +453,7 @@ struct OnboardingFlowView: View {
     @Binding var currentStep: Int
     @Binding var userProfile: UserProfileData
     @Binding var showingMainApp: Bool
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     
     var body: some View {
         NavigationView {
@@ -633,7 +545,7 @@ struct OnboardingFlowView: View {
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingMainApp) {
-            MainTabView()
+            MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
         }
     }
 }
@@ -963,6 +875,7 @@ struct InterestTag: View {
 // MARK: - Main Tab View
 struct MainTabView: View {
     @State private var selectedTab = 0
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     
     var body: some View {
         ZStack {
@@ -970,9 +883,9 @@ struct MainTabView: View {
             Group {
                 switch selectedTab {
                 case 0:
-            DiscoveryView()
+                    DiscoveryView(savedOpportunitiesManager: savedOpportunitiesManager)
                 case 1:
-                    SavedView()
+                    SavedView(savedOpportunitiesManager: savedOpportunitiesManager)
                 case 2:
                     MentorsView()
                 case 3:
@@ -980,7 +893,7 @@ struct MainTabView: View {
                 case 4:
                     ResourcesView()
                 default:
-                    DiscoveryView()
+                    DiscoveryView(savedOpportunitiesManager: savedOpportunitiesManager)
                 }
             }
             
@@ -1074,41 +987,144 @@ struct TabBarButton: View {
 
 // MARK: - Saved View
 struct SavedView: View {
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
+    
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color.applixyBackground
-                    .ignoresSafeArea()
+        ZStack {
+            Color.applixyBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Standard Header
+                StandardHeaderView(
+                    title: "Saved",
+                    subtitle: "Your saved opportunities"
+                )
                 
-                VStack(spacing: 30) {
-                    Image(systemName: "star.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.applixyLight)
-                    
-                    Text("Saved Opportunities")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Your saved opportunities will appear here")
-                        .foregroundColor(.applixySecondary)
-                        .multilineTextAlignment(.center)
+                // Content
+                if savedOpportunitiesManager.savedOpportunities.isEmpty {
+                    VStack(spacing: 30) {
+                        Image(systemName: "star.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.applixyLight)
+                        
+                        Text("No Saved Opportunities")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.applixyDark)
+                        
+                        Text("Your saved opportunities will appear here")
+                            .foregroundColor(.applixySecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(savedOpportunitiesManager.savedOpportunities) { opportunity in
+                                SavedOpportunityCard(opportunity: opportunity, savedOpportunitiesManager: savedOpportunitiesManager)
+                            }
+                        }
                         .padding(.horizontal)
+                        .padding(.top, 20)
+                    }
                 }
             }
-            .navigationTitle("Saved")
         }
+    }
+}
+
+// MARK: - Saved Opportunity Card
+struct SavedOpportunityCard: View {
+    let opportunity: OpportunityData
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
+    @State private var showingDetail = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with title and remove button
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(opportunity.title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.applixyDark)
+                        .lineLimit(2)
+                    
+                    Text(opportunity.type)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.applixyPrimary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    savedOpportunitiesManager.removeOpportunity(opportunity)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.applixySecondary)
+                }
+            }
+            
+            // Description
+            Text(opportunity.details)
+                .font(.system(size: 14))
+                .foregroundColor(.applixySecondary)
+                .lineLimit(3)
+            
+            // Deadline and link
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 12))
+                    Text("Due \(opportunity.deadline, formatter: dateFormatter)")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(.applixySecondary)
+                
+                Spacer()
+                
+                if !opportunity.link.isEmpty {
+                    Button("View Details") {
+                        showingDetail = true
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.applixyPrimary)
+                }
+            }
+        }
+        .padding()
+        .background(Color.applixyWhite)
+        .cornerRadius(12)
+        .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+        .sheet(isPresented: $showingDetail) {
+            OpportunityDetailView(opportunity: opportunity)
+        }
+    }
+    
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
     }
 }
 
 // MARK: - Updates View
 struct UpdatesView: View {
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color.applixyBackground
-                    .ignoresSafeArea()
+        ZStack {
+            Color.applixyBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Standard Header
+                StandardHeaderView(
+                    title: "Updates",
+                    subtitle: "Latest opportunities and news"
+                )
                 
+                // Content
                 VStack(spacing: 30) {
                     Image(systemName: "calendar.circle.fill")
                         .font(.system(size: 80))
@@ -1124,14 +1140,15 @@ struct UpdatesView: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle("Updates")
         }
     }
 }
 
 // MARK: - Discovery View
 struct DiscoveryView: View {
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     @State private var opportunities: [OpportunityData] = []
     @State private var currentIndex = 0
     @State private var dragOffset = CGSize.zero
@@ -1141,15 +1158,19 @@ struct DiscoveryView: View {
     @State private var showingSkippedAlert = false
     @State private var swipeDirection: SwipeDirection = .none
     
+
     var body: some View {
-        NavigationView {
+        
             ZStack {
                 Color.applixyBackground
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header
-                    headerView
+                    // Standard Header
+                    StandardHeaderView(
+                        title: "Discover",
+                        subtitle: "Swipe to explore opportunities"
+                    )
                     
                     // Card Stack
                     cardStackView
@@ -1175,60 +1196,14 @@ struct DiscoveryView: View {
             } message: {
                 Text("You can always find this opportunity again later.")
             }*/
-        }
+        
     }
     
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Discover")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Swipe to explore opportunities")
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-                
-                // Profile/Stats button
-                Button(action: {}) {
-                    Image(systemName: "person.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.applixyPrimary)
-                }
-            }
-            .padding(.horizontal)
-            
-            // Progress indicator
-            if !opportunities.isEmpty {
-                HStack {
-                    Text("\(currentIndex + 1) of \(opportunities.count)")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                    
-                    Spacer()
-                    
-                    Text("New today")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                }
-                .padding(.horizontal)
-            }
-        }
-        .padding(.top)
-    }
     
     // MARK: - Card Stack View
     private var cardStackView: some View {
         VStack(spacing: 0) {
-            // Add margin above the card
             Spacer()
-                .frame(height: 30)
             
             ZStack {
                 if opportunities.isEmpty {
@@ -1239,41 +1214,41 @@ struct DiscoveryView: View {
                     let currentOpportunity = opportunities[currentIndex]
                     ZStack {
                         // Main card
-                    SwipeCardView(
-                        opportunity: currentOpportunity,
-                        dragOffset: $dragOffset,
+                        SwipeCardView(
+                            opportunity: currentOpportunity,
+                            dragOffset: $dragOffset,
                             swipeDirection: $swipeDirection,
-                        onSwipeLeft: {
-                            skipOpportunity()
-                        },
+                            onSwipeLeft: {
+                                skipOpportunity()
+                            },
                             onSwipeRight: {
                                 saveOpportunity(currentOpportunity)
-                        },
+                            },
                             onHeartTap: {
-                            saveOpportunity(currentOpportunity)
-                        }
-                    )
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
+                                saveOpportunity(currentOpportunity)
+                            }
+                        )
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
                                     print("Drag changed: \(value.translation.width)")
-                                dragOffset = value.translation
+                                    dragOffset = value.translation
                                     updateSwipeDirection(value: value)
-                            }
-                            .onEnded { value in
+                                }
+                                .onEnded { value in
                                     print("Drag ended: \(value.translation.width)")
-                                handleSwipeGesture(value: value, opportunity: currentOpportunity)
-                            }
-                    )
+                                    handleSwipeGesture(value: value, opportunity: currentOpportunity)
+                                }
+                        )
                         
                         // Overlay action buttons (positioned like in your image)
                         VStack {
-            Spacer()
-            
+                            Spacer()
+                            
                             HStack(spacing: 20) {
                                 // X button (left)
-                Button(action: {
-                        skipOpportunity()
+                                Button(action: {
+                                    skipOpportunity()
                                 }) {
                                     ZStack {
                                         Circle()
@@ -1281,15 +1256,15 @@ struct DiscoveryView: View {
                                             .frame(width: 60, height: 60)
                                             .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
                                         
-                        Image(systemName: "xmark")
-                            .font(.title2)
+                                        Image(systemName: "xmark")
+                                            .font(.title2)
                                             .fontWeight(.bold)
-                            .foregroundColor(.red)
-                    }
+                                            .foregroundColor(.red)
+                                    }
                                 }
-                
+                                
                                 // Heart button (center)
-                Button(action: {
+                                Button(action: {
                                     saveOpportunity(currentOpportunity)
                                 }) {
                                     ZStack {
@@ -1306,13 +1281,13 @@ struct DiscoveryView: View {
                                 }
                                 
                                 // Star button (right)
-                Button(action: {
+                                Button(action: {
                                     saveOpportunity(currentOpportunity)
                                 }) {
                                     ZStack {
                                         Circle()
                                             .fill(Color.applixyWhite)
-                        .frame(width: 60, height: 60)
+                                            .frame(width: 60, height: 60)
                                             .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
                                         
                                         Image(systemName: "star.fill")
@@ -1328,6 +1303,8 @@ struct DiscoveryView: View {
                 }
             }
             .frame(height: 400)
+            
+            Spacer()
         }
         .padding(.horizontal, 40)
     }
@@ -1525,6 +1502,7 @@ struct DiscoveryView: View {
     
     private func saveOpportunity(_ opportunity: OpportunityData) {
         print("Saved: \(opportunity.title)")
+        savedOpportunitiesManager.saveOpportunity(opportunity)
         showingSavedAlert = true
         nextOpportunity()
     }
@@ -1543,6 +1521,48 @@ struct DiscoveryView: View {
             swipeDirection = .none
         }
         print("New index: \(currentIndex)")
+    }
+}
+
+// MARK: - Standard Header Component
+struct StandardHeaderView: View {
+    let title: String
+    let subtitle: String
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.applixyDark)
+                    
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.applixySecondary)
+                }
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+        }
+        .padding(.top)
+    }
+}
+
+// MARK: - Shared Data Manager
+class SavedOpportunitiesManager: ObservableObject {
+    @Published var savedOpportunities: [OpportunityData] = []
+    
+    func saveOpportunity(_ opportunity: OpportunityData) {
+        if !savedOpportunities.contains(where: { $0.id == opportunity.id }) {
+            savedOpportunities.append(opportunity)
+        }
+    }
+    
+    func removeOpportunity(_ opportunity: OpportunityData) {
+        savedOpportunities.removeAll { $0.id == opportunity.id }
     }
 }
 
@@ -1621,7 +1641,7 @@ struct SwipeCardView: View {
                 }
             }
             
-                    // Deadline and Award
+            // Deadline and Award
                     VStack(spacing: 6) {
                 HStack {
                     Image(systemName: "calendar")
@@ -1642,8 +1662,8 @@ struct SwipeCardView: View {
             
                     // Description
                     Text(opportunity.details.isEmpty ? opportunity.eligibility : opportunity.details)
-                        .font(.body)
-                        .foregroundColor(.applixyDark)
+                .font(.body)
+                .foregroundColor(.applixyDark)
                         .lineLimit(2)
             
             // Tags
@@ -1911,8 +1931,11 @@ struct MentorsView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header
-                    headerView
+                    // Standard Header
+                    StandardHeaderView(
+                        title: "Mentors",
+                        subtitle: "Connect with experienced mentors"
+                    )
                     
                     // Content
                     if mentors.isEmpty {
@@ -1946,27 +1969,6 @@ struct MentorsView: View {
         }
     }
     
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Mentors")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Connect with experienced mentors")
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-            }
-            .padding(.horizontal)
-        }
-        .padding(.top)
-    }
     
     // MARK: - Empty State
     private var emptyStateView: some View {
@@ -2158,8 +2160,11 @@ struct ResourcesView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header
-                    headerView
+                    // Standard Header
+                    StandardHeaderView(
+                        title: "Resources",
+                        subtitle: "Helpful links and tools for your journey"
+                    )
                     
                     // Content
                     if resources.isEmpty {
@@ -2183,27 +2188,6 @@ struct ResourcesView: View {
         }
     }
     
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Resources")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Helpful links and tools for your journey")
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-            }
-            .padding(.horizontal)
-        }
-        .padding(.top)
-    }
     
     // MARK: - Empty State
     private var emptyStateView: some View {
