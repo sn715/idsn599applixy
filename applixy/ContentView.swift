@@ -456,8 +456,14 @@ struct OnboardingFlowView: View {
                 Color.applixyBackground
                     .ignoresSafeArea()
                 
-                VStack(spacing: 30) {
+                VStack(spacing: 0) {
                     if currentStep < 4 {
+                        // Standard Header
+                        StandardHeaderView(
+                            title: getOnboardingTitle(),
+                            subtitle: getOnboardingSubtitle()
+                        )
+                        
                         // Progress indicator
                         VStack(spacing: 10) {
                             HStack {
@@ -475,6 +481,7 @@ struct OnboardingFlowView: View {
                                 .scaleEffect(y: 2)
                         }
                         .padding(.horizontal)
+                        .padding(.top, 20)
                         
                         // Onboarding steps
                         TabView(selection: $currentStep) {
@@ -533,6 +540,7 @@ struct OnboardingFlowView: View {
                             .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
                         }
                         .padding(.horizontal)
+                        .padding(.bottom, 20)
                     }
                 }
             }
@@ -540,6 +548,26 @@ struct OnboardingFlowView: View {
         }
         .fullScreenCover(isPresented: $showingMainApp) {
             MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
+        }
+    }
+    
+    private func getOnboardingTitle() -> String {
+        switch currentStep {
+        case 0: return "General Info"
+        case 1: return "Demographics"
+        case 2: return "Academic Info"
+        case 3: return "Interests"
+        default: return "Onboarding"
+        }
+    }
+    
+    private func getOnboardingSubtitle() -> String {
+        switch currentStep {
+        case 0: return "Tell us about yourself"
+        case 1: return "Help us understand your background"
+        case 2: return "Share your academic journey"
+        case 3: return "What interests you most?"
+        default: return "Complete your profile"
         }
     }
 }
@@ -566,18 +594,7 @@ struct GeneralInfoView: View {
     @Binding var userProfile: UserProfileData
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Tell us about yourself")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Let's start with the basics")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CustomTextField(title: "First Name", text: $userProfile.firstName, icon: "person.fill")
                 CustomTextField(title: "Last Name", text: $userProfile.lastName, icon: "person.fill")
@@ -600,9 +617,9 @@ struct GeneralInfoView: View {
                 
                 CustomTextField(title: "Email", text: $userProfile.email, icon: "envelope.fill", keyboardType: .emailAddress)
                 CustomTextField(title: "Location (City, State)", text: $userProfile.location, icon: "location.fill")
-            }
         }
         .padding()
+        }
     }
 }
 
@@ -642,18 +659,7 @@ struct DemographicsView: View {
     private let races = ["American Indian/Alaska Native", "Asian", "Black/African American", "Hispanic/Latino", "Native Hawaiian/Pacific Islander", "White", "Other", "Prefer not to say"]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Demographics")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Help us personalize your experience")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CustomPicker(title: "Gender", selection: $userProfile.gender, options: genders, icon: "person.2.fill")
                 CustomPicker(title: "Race/Ethnicity", selection: $userProfile.race, options: races, icon: "globe")
@@ -661,10 +667,10 @@ struct DemographicsView: View {
                 VStack(spacing: 15) {
                     CustomToggle(title: "First Generation College Student", isOn: $userProfile.isFirstGen, icon: "graduationcap.fill")
                     CustomToggle(title: "Low Income Background", isOn: $userProfile.isLowIncome, icon: "dollarsign.circle.fill")
-                }
             }
         }
         .padding()
+        }
     }
 }
 
@@ -734,18 +740,7 @@ struct AcademicInfoView: View {
     private let gpaRanges = ["3.0-3.2", "3.2-3.5", "3.5-3.7", "3.7-4.0", "4.0+"]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Academic Information")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Tell us about your academic background")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CustomTextField(title: "Current School", text: $userProfile.school, icon: "building.2.fill")
                 
@@ -780,10 +775,10 @@ struct AcademicInfoView: View {
                     .background(Color.applixyWhite)
                     .cornerRadius(12)
                     .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
-                }
             }
         }
         .padding()
+        }
     }
 }
 
@@ -796,18 +791,7 @@ struct InterestsView: View {
     ]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your Interests")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Select all that apply to help us find the best opportunities for you")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 15) {
                 ForEach(interestOptions, id: \.self) { interest in
                     InterestTag(
@@ -818,12 +802,12 @@ struct InterestsView: View {
                             userProfile.interests.removeAll { $0 == interest }
                         } else {
                             userProfile.interests.append(interest)
-                        }
                     }
                 }
             }
         }
         .padding()
+        }
     }
 }
 
@@ -984,11 +968,11 @@ struct SavedView: View {
     @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     
     var body: some View {
-        ZStack {
-            Color.applixyBackground
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
+            ZStack {
+                Color.applixyBackground
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
                 // Standard Header
                 StandardHeaderView(
                     title: "Saved",
@@ -1084,7 +1068,7 @@ struct SavedOpportunityCard: View {
                         showingDetail = true
                     }
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.applixyPrimary)
+                        .foregroundColor(.applixyPrimary)
                 }
             }
         }
@@ -1125,9 +1109,9 @@ struct UpdatesView: View {
                     LazyVStack(spacing: 16) {
                         ForEach(scholarshipUpdates) { update in
                             ScholarshipUpdateCard(update: update)
-                        }
-                    }
-                    .padding(.horizontal)
+                }
+            }
+            .padding(.horizontal)
                     .padding(.top, 20)
                 }
             }
@@ -1283,7 +1267,7 @@ struct ScholarshipDetailView: View {
                         Text(update.organization)
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.applixySecondary)
+                        .foregroundColor(.applixySecondary)
                         
                         Text(update.title)
                             .font(.largeTitle)
@@ -1304,8 +1288,8 @@ struct ScholarshipDetailView: View {
                             
                             Spacer()
                         }
-                    }
-                    .padding(.horizontal)
+                }
+                .padding(.horizontal)
                     
                     // Description
                     Text(update.description)
@@ -1314,8 +1298,8 @@ struct ScholarshipDetailView: View {
                         .padding(.horizontal)
                     
                     Spacer()
-                }
-                .padding(.top)
+        }
+        .padding(.top)
             }
             .navigationTitle("Scholarship Details")
             .navigationBarTitleDisplayMode(.inline)
@@ -2599,8 +2583,8 @@ struct ResourceCard: View {
                 
                 // Title overlay
                 VStack(alignment: .leading, spacing: 4) {
-                    Spacer()
-                    
+                Spacer()
+                
                     Text(resource.title)
                         .font(.title2)
                         .fontWeight(.bold)
@@ -2612,44 +2596,44 @@ struct ResourceCard: View {
             
             // Content section
             VStack(alignment: .leading, spacing: 12) {
-                // Description
-                Text(resource.description)
+            // Description
+            Text(resource.description)
                     .font(.system(size: 14))
-                    .foregroundColor(.applixyDark)
+                .foregroundColor(.applixyDark)
                     .lineLimit(3)
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-                
-                // Action Button
-                Button(action: {
-                    if let url = URL(string: resource.url) {
-                        UIApplication.shared.open(url)
-                    }
-                }) {
-                    HStack {
-                        Text("Visit Resource")
-                            .fontWeight(.medium)
-                        
-                        if resource.isExternal {
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                        }
-                    }
-                    .foregroundColor(.applixyWhite)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
-                        LinearGradient(
-                            colors: [.applixyPrimary, .applixySecondary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(20)
+            
+            // Action Button
+            Button(action: {
+                if let url = URL(string: resource.url) {
+                    UIApplication.shared.open(url)
                 }
+            }) {
+                HStack {
+                    Text("Visit Resource")
+                        .fontWeight(.medium)
+                    
+                    if resource.isExternal {
+                        Image(systemName: "arrow.up.right")
+                            .font(.caption)
+                    }
+                }
+                .foregroundColor(.applixyWhite)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    LinearGradient(
+                        colors: [.applixyPrimary, .applixySecondary],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(20)
+            }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
-            }
+        }
             .background(Color.applixyWhite)
             .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
         }
