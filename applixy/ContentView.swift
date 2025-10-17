@@ -1106,6 +1106,8 @@ struct SavedOpportunityCard: View {
 
 // MARK: - Updates View
 struct UpdatesView: View {
+    @State private var scholarshipUpdates: [ScholarshipUpdate] = []
+    
     var body: some View {
         ZStack {
             Color.applixyBackground
@@ -1119,22 +1121,210 @@ struct UpdatesView: View {
                 )
                 
                 // Content
-                VStack(spacing: 30) {
-                    Image(systemName: "calendar.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.applixyLight)
-                    
-                    Text("Updates")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Stay updated with the latest opportunities and news")
-                        .foregroundColor(.applixySecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        ForEach(scholarshipUpdates) { update in
+                            ScholarshipUpdateCard(update: update)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .onAppear {
+            loadScholarshipUpdates()
+        }
+    }
+    
+    private func loadScholarshipUpdates() {
+        scholarshipUpdates = [
+            ScholarshipUpdate(
+                title: "Jack Kent Scholarship",
+                organization: "JACK KENT COOKE FOUNDATION",
+                description: "Offers up to $55,000 per year for high-achieving students with financial need to attend top universities.",
+                status: "Decision Ready!",
+                statusColor: .green,
+                imageName: "jack-kent-scholarship",
+                isNew: false
+            ),
+            ScholarshipUpdate(
+                title: "Dell Scholarship Program",
+                organization: "DELL SCHOLARSHIP PROGRAM",
+                description: "Support for students who've overcome significant challenges and demonstrate financial need.",
+                status: "Releases Tomorrow!",
+                statusColor: .gray,
+                imageName: "dell-scholarship",
+                isNew: true
+            )
+        ]
+    }
+}
+
+// MARK: - Scholarship Update Data Model
+struct ScholarshipUpdate: Identifiable {
+    let id = UUID().uuidString
+    let title: String
+    let organization: String
+    let description: String
+    let status: String
+    let statusColor: Color
+    let imageName: String
+    let isNew: Bool
+}
+
+// MARK: - Scholarship Update Card
+struct ScholarshipUpdateCard: View {
+    let update: ScholarshipUpdate
+    @State private var showingDetail = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Main card content
+            ZStack(alignment: .topLeading) {
+                // Update image background
+                Image("update")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 200)
+                    .clipped()
+                    .cornerRadius(16, corners: [.topLeft, .topRight])
+                
+                // Status tag
+                HStack {
+                    Text(update.status)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(update.statusColor == .green ? .white : .gray)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(update.statusColor == .green ? Color.green : Color.white.opacity(0.8))
+                        )
+                    
+                    Spacer()
+                }
+                .padding(.top, 16)
+                .padding(.horizontal, 16)
+                
+                // Organization name
+                VStack(alignment: .leading, spacing: 4) {
+                    Spacer()
+                    
+                    Text(update.organization)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                    
+                    Text(update.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                }
+            }
+            
+            // Description section
+            VStack(alignment: .leading, spacing: 12) {
+                Text(update.description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.applixyDark)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                
+                // Action button
+                HStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        showingDetail = true
+                    }) {
+                        HStack(spacing: 8) {
+                            Text("Learn More")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.applixyPrimary)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.applixyPrimary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                }
+            }
+            .background(Color.applixyWhite)
+            .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
+        }
+        .background(Color.applixyWhite)
+        .cornerRadius(16)
+        .shadow(color: .applixyLight, radius: 8, x: 0, y: 4)
+        .sheet(isPresented: $showingDetail) {
+            ScholarshipDetailView(update: update)
+        }
+    }
+}
+
+// MARK: - Scholarship Detail View
+struct ScholarshipDetailView: View {
+    let update: ScholarshipUpdate
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(update.organization)
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.applixySecondary)
+                        
+                        Text(update.title)
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.applixyDark)
+                        
+                        HStack {
+                            Text(update.status)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(update.statusColor == .green ? .white : .gray)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(update.statusColor == .green ? Color.green : Color.gray.opacity(0.2))
+                                )
+                            
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Description
+                    Text(update.description)
+                        .font(.body)
+                        .foregroundColor(.applixyDark)
+                        .padding(.horizontal)
+                    
+                    Spacer()
+                }
+                .padding(.top)
+            }
+            .navigationTitle("Scholarship Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
             }
         }
     }
@@ -1170,7 +1360,6 @@ struct DiscoveryView: View {
                     cardStackView
                 }
             }
-            //.navigationTitle("Discovery")
             .onAppear {
                 loadSampleOpportunities()
             }
@@ -1179,17 +1368,6 @@ struct DiscoveryView: View {
                     OpportunityDetailView(opportunity: opportunity)
                 }
             }
-            /*
-            .alert("Opportunity Saved!", isPresented: $showingSavedAlert) {
-                Button("OK") { }
-            } message: {
-                Text("This opportunity has been added to your saved list.")
-            }
-            .alert("Opportunity Skipped", isPresented: $showingSkippedAlert) {
-                Button("OK") { }
-            } message: {
-                Text("You can always find this opportunity again later.")
-            }*/
         
     }
     
@@ -2390,69 +2568,91 @@ struct ResourceCard: View {
     let resource: ResourceItem
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Image(systemName: resource.icon)
-                    .font(.title2)
-                    .foregroundColor(.applixyPrimary)
-                    .frame(width: 30)
+        VStack(spacing: 0) {
+            // Top image section
+            ZStack(alignment: .topLeading) {
+                // Resource image background
+                Image("resource")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 150)
+                    .clipped()
+                    .cornerRadius(12, corners: [.topLeft, .topRight])
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(resource.title)
-                        .font(.headline)
-                        .foregroundColor(.applixyDark)
-                        .lineLimit(2)
-                    
+                // Category tag
+                HStack {
                     Text(resource.category)
                         .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-                
-                if resource.isExternal {
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.caption)
-                        .foregroundColor(.applixyPrimary)
-                }
-            }
-            
-            // Description
-            Text(resource.description)
-                .font(.body)
-                .foregroundColor(.applixyDark)
-                .lineLimit(2)
-            
-            // Action Button
-            Button(action: {
-                if let url = URL(string: resource.url) {
-                    UIApplication.shared.open(url)
-                }
-            }) {
-                HStack {
-                    Text("Visit Resource")
-                        .fontWeight(.medium)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.black.opacity(0.6))
+                        )
                     
-                    if resource.isExternal {
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption)
-                    }
+                    Spacer()
                 }
-                .foregroundColor(.applixyWhite)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(
-                    LinearGradient(
-                        colors: [.applixyPrimary, .applixySecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(20)
+                .padding(.top, 12)
+                .padding(.horizontal, 16)
+                
+                // Title overlay
+                VStack(alignment: .leading, spacing: 4) {
+                    Spacer()
+                    
+                    Text(resource.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
+                }
             }
+            
+            // Content section
+            VStack(alignment: .leading, spacing: 12) {
+                // Description
+                Text(resource.description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.applixyDark)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                
+                // Action Button
+                Button(action: {
+                    if let url = URL(string: resource.url) {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack {
+                        Text("Visit Resource")
+                            .fontWeight(.medium)
+                        
+                        if resource.isExternal {
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                        }
+                    }
+                    .foregroundColor(.applixyWhite)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        LinearGradient(
+                            colors: [.applixyPrimary, .applixySecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(20)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+            .background(Color.applixyWhite)
+            .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
         }
-        .padding(16)
         .background(Color.applixyWhite)
         .cornerRadius(12)
         .shadow(color: .applixyLight, radius: 6, x: 0, y: 3)
