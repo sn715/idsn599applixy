@@ -100,7 +100,7 @@ struct LandingPageView: View {
                     Image("app-logo")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 120, height: 120)
+                            .frame(width: 120, height: 120)
                     // App Name and Tagline
                     VStack(spacing: 12) {
                         Text("Applixy")
@@ -131,13 +131,7 @@ struct LandingPageView: View {
                     .foregroundColor(.applixyWhite)
                             .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(
-                                LinearGradient(
-                            colors: [.applixyPrimary, .applixySecondary],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
+                    .background(Color.applixyPrimary)
                             .cornerRadius(12)
                             .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
@@ -205,7 +199,7 @@ struct LandingPageView: View {
                                     .frame(width: 60, height: 60)
                                 
                                 Text("f")
-                                    .font(.title2)
+                            .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.applixyPrimary)
                             }
@@ -998,7 +992,7 @@ struct SavedView: View {
                 // Standard Header
                 StandardHeaderView(
                     title: "Saved",
-                    subtitle: "Your saved opportunities"
+                    subtitle: " "
                 )
                 
                 // Content
@@ -1121,7 +1115,7 @@ struct UpdatesView: View {
                 // Standard Header
                 StandardHeaderView(
                     title: "Updates",
-                    subtitle: "Latest opportunities and news"
+                    subtitle: " "
                 )
                 
                 // Content
@@ -1158,7 +1152,7 @@ struct DiscoveryView: View {
     @State private var showingSkippedAlert = false
     @State private var swipeDirection: SwipeDirection = .none
     
-
+    
     var body: some View {
         
             ZStack {
@@ -1169,7 +1163,7 @@ struct DiscoveryView: View {
                     // Standard Header
                     StandardHeaderView(
                         title: "Discover",
-                        subtitle: "Swipe to explore opportunities"
+                        subtitle: " "
                     )
                     
                     // Card Stack
@@ -1214,41 +1208,41 @@ struct DiscoveryView: View {
                     let currentOpportunity = opportunities[currentIndex]
                     ZStack {
                         // Main card
-                        SwipeCardView(
-                            opportunity: currentOpportunity,
-                            dragOffset: $dragOffset,
+                    SwipeCardView(
+                        opportunity: currentOpportunity,
+                        dragOffset: $dragOffset,
                             swipeDirection: $swipeDirection,
-                            onSwipeLeft: {
-                                skipOpportunity()
-                            },
+                        onSwipeLeft: {
+                            skipOpportunity()
+                        },
                             onSwipeRight: {
                                 saveOpportunity(currentOpportunity)
-                            },
+                        },
                             onHeartTap: {
-                                saveOpportunity(currentOpportunity)
-                            }
-                        )
-                        .gesture(
-                            DragGesture()
-                                .onChanged { value in
+                            saveOpportunity(currentOpportunity)
+                        }
+                    )
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
                                     print("Drag changed: \(value.translation.width)")
-                                    dragOffset = value.translation
+                                dragOffset = value.translation
                                     updateSwipeDirection(value: value)
-                                }
-                                .onEnded { value in
+                            }
+                            .onEnded { value in
                                     print("Drag ended: \(value.translation.width)")
-                                    handleSwipeGesture(value: value, opportunity: currentOpportunity)
-                                }
-                        )
+                                handleSwipeGesture(value: value, opportunity: currentOpportunity)
+                            }
+                    )
                         
                         // Overlay action buttons (positioned like in your image)
                         VStack {
-                            Spacer()
-                            
+            Spacer()
+            
                             HStack(spacing: 20) {
                                 // X button (left)
-                                Button(action: {
-                                    skipOpportunity()
+                Button(action: {
+                        skipOpportunity()
                                 }) {
                                     ZStack {
                                         Circle()
@@ -1256,15 +1250,15 @@ struct DiscoveryView: View {
                                             .frame(width: 60, height: 60)
                                             .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
                                         
-                                        Image(systemName: "xmark")
-                                            .font(.title2)
+                        Image(systemName: "xmark")
+                            .font(.title2)
                                             .fontWeight(.bold)
-                                            .foregroundColor(.red)
-                                    }
+                            .foregroundColor(.red)
+                    }
                                 }
-                                
+                
                                 // Heart button (center)
-                                Button(action: {
+                Button(action: {
                                     saveOpportunity(currentOpportunity)
                                 }) {
                                     ZStack {
@@ -1281,13 +1275,13 @@ struct DiscoveryView: View {
                                 }
                                 
                                 // Star button (right)
-                                Button(action: {
+                Button(action: {
                                     saveOpportunity(currentOpportunity)
                                 }) {
                                     ZStack {
                                         Circle()
                                             .fill(Color.applixyWhite)
-                                            .frame(width: 60, height: 60)
+                        .frame(width: 60, height: 60)
                                             .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
                                         
                                         Image(systemName: "star.fill")
@@ -1934,7 +1928,7 @@ struct MentorsView: View {
                     // Standard Header
                     StandardHeaderView(
                         title: "Mentors",
-                        subtitle: "Connect with experienced mentors"
+                        subtitle: " "
                     )
                     
                     // Content
@@ -1942,9 +1936,12 @@ struct MentorsView: View {
                         emptyStateView
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 16) {
+                            LazyVGrid(columns: [
+                                GridItem(.flexible(), spacing: 16),
+                                GridItem(.flexible(), spacing: 16)
+                            ], spacing: 16) {
                                 ForEach(mentors) { mentor in
-                                    MentorCard(mentor: mentor) {
+                                    MentorGridCard(mentor: mentor) {
                                         selectedMentor = mentor
                                         showingBookingConfirmation = true
                                     }
@@ -1958,13 +1955,6 @@ struct MentorsView: View {
            // .navigationTitle("Mentors")
             .onAppear {
                 loadMentors()
-            }
-            .alert("Mock Meeting Booked!", isPresented: $showingBookingConfirmation) {
-                Button("OK") { }
-            } message: {
-                if let mentor = selectedMentor {
-                    Text("You've booked a mock meeting with \(mentor.name). We'll send you a confirmation email shortly!")
-                }
             }
         }
     }
@@ -2149,6 +2139,92 @@ struct MentorCard: View {
     }
 }
 
+// MARK: - Mentor Grid Card
+struct MentorGridCard: View {
+    let mentor: MentorProfile
+    let onBookMeeting: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Image placeholder with overlay
+            ZStack {
+                // Image placeholder
+                Image("mentor")
+                        .resizable()
+                        
+                // Star icon in top right
+                VStack {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "star.fill")
+                            .font(.title3)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(8)
+                    }
+                    Spacer()
+                }
+                
+                // Name and specialty overlay at bottom
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(mentor.name)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            
+                            Text(mentor.specialty)
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(
+                            colors: [.clear, .black.opacity(0.7)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                }
+            }
+            .cornerRadius(12, corners: [.topLeft, .topRight])
+            
+            
+        }
+        .background(Color.applixyWhite)
+        .cornerRadius(12)
+        .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+        .onTapGesture {
+            onBookMeeting()
+        }
+    }
+}
+
+// MARK: - Corner Radius Extension
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
+    }
+}
+
 // MARK: - Resources View
 struct ResourcesView: View {
     @State private var resources: [ResourceItem] = []
@@ -2163,7 +2239,7 @@ struct ResourcesView: View {
                     // Standard Header
                     StandardHeaderView(
                         title: "Resources",
-                        subtitle: "Helpful links and tools for your journey"
+                        subtitle: " "
                     )
                     
                     // Content
