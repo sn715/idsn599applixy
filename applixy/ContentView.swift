@@ -1235,11 +1235,11 @@ struct DiscoveryView: View {
                             }
                     )
                         
-                        // Overlay action buttons (positioned like in your image)
-                        VStack {
+            // Overlay action buttons (positioned like in your image)
+            VStack {
             Spacer()
             
-                            HStack(spacing: 20) {
+            HStack(spacing: 20) {
                                 // X button (left)
                 Button(action: {
                         skipOpportunity()
@@ -1592,16 +1592,12 @@ struct SwipeCardView: View {
             VStack(spacing: 0) {
                 // Image placeholder with deadline tag
                 ZStack(alignment: .topLeading) {
-                    // Placeholder image (you can replace with actual images)
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [.applixySecondary, .applixyLight],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                    // Opportunity image
+                    Image("opportunity")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
                         .frame(height: 200)
+                        .clipped()
                     
                     // Deadline tag
                     Text("DUE: \(opportunity.deadline, formatter: dateFormatter)")
