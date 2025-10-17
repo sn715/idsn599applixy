@@ -296,7 +296,7 @@ struct CreatePasswordView: View {
             VStack(spacing: 0) {
                 // Back button
                 HStack {
-                    Button(action: {
+                Button(action: {
                         showingCreatePassword = false
                     }) {
                         HStack(spacing: 8) {
@@ -1565,6 +1565,7 @@ struct DiscoveryView: View {
     private var cardStackView: some View {
         VStack(spacing: 0) {
             Spacer()
+                .frame(height: 100)
             
             ZStack {
                 if opportunities.isEmpty {
