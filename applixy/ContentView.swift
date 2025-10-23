@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
+import FirebaseAuth
 
 // MARK: - Brand Colors
 extension Color {
@@ -1530,7 +1532,10 @@ struct DiscoveryView: View {
     @State private var showingSavedAlert = false
     @State private var showingSkippedAlert = false
     @State private var swipeDirection: SwipeDirection = .none
+    @State private var listener: ListenerRegistration?
     
+    
+
     
     var body: some View {
         
@@ -1539,18 +1544,44 @@ struct DiscoveryView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Standard Header
-                    StandardHeaderView(
-                        title: "Discover",
-                        subtitle: " "
-                    )
+                    
+                    HStack{
+                        Spacer()
+                        
+                        // Standard Header
+                        StandardHeaderView(
+                            title: "Discover",
+                            subtitle: " "
+                        )
+                        
+                        // Button should direct user to another pop up to add opportunities... Then when they click the submit button their opportunity should post (using the postOpportunity function)
+                        Button(action: {
+                            postOpportunity(collection: "scholarship")
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(colors: [.applixyPrimary, .applixySecondary],
+                                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .frame(width: 54, height: 54)
+                                    .shadow(color: .applixyPrimary.opacity(0.25), radius: 12, x: 0, y: 6)
+                                Image(systemName: "plus")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyWhite)
+                            }
+                        }
+                    }
+                    
+                    
                     
                     // Card Stack
                     cardStackView
                 }
             }
             .onAppear {
-                loadSampleOpportunities()
+                loadOpportunities()
             }
             .sheet(isPresented: $showingDetail) {
                 if let opportunity = selectedOpportunity {
@@ -1725,104 +1756,180 @@ struct DiscoveryView: View {
     }
     
     // MARK: - Helper Functions
-    private func loadSampleOpportunities() {
+    
+    private func loadOpportunities() {
+        // If already signed in, attach the listener immediately
+        if Auth.auth().currentUser != nil {
+            attachScholarshipListener()
+            return
+        }
+
+        // Otherwise sign in anonymously, then attach
+        Auth.auth().signInAnonymously { _, error in
+            if let error = error {
+                print("🔥 Anonymous sign-in failed: \(error.localizedDescription)")
+                return
+            }
+            print("✅ Anonymous sign-in OK")
+            attachScholarshipListener()
+        }
+    }
+
+    // Split out the actual listener so we can call it from both paths
+    private func attachScholarshipListener() {
+        // Start live updates from your scholarship collection
+        listener = startScholarshipListener { posts in
+            print("📥 posts from listener: \(posts.count)")
+            let mapped: [OpportunityData] = posts.map { p in
+                OpportunityData(
+                    id: p.id,
+                    title: p.name,
+                    type: "Scholarship",
+                    deadline: parseDeadline(p.applicationDeadline),
+                    awardAmount: formatAward(p.awardAmount),
+                    eligibility: p.organization.isEmpty ? "See details" : p.organization,
+                    details: p.description,
+                    link: p.website ?? "",
+                    tags: []
+                )
+            }
+            DispatchQueue.main.async {
+                self.opportunities = mapped
+                self.currentIndex = 0
+                print("✅ opportunities set: \(self.opportunities.count)")
+            }
+        }
+    }
+    
+    // MARK: - Helpers
+    private func parseDeadline(_ raw: String?) -> Date {
+        guard let raw = raw, !raw.isEmpty else { return Date() }
+        let fmts = ["yyyy-MM-dd", "MM/dd/yyyy", "MMMM d, yyyy", "MMMM d"]
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        for f in fmts {
+            df.dateFormat = f
+            if let d = df.date(from: raw) {
+                if f == "MMMM d" {
+                    let y = Calendar.current.component(.year, from: Date())
+                    return Calendar.current.date(bySetting: .year, value: y, of: d) ?? d
+                }
+                return d
+            }
+        }
+        // Fallback: now (so UI still renders)
+        return Date()
+    }
+
+    private func formatAward(_ amount: Int?) -> String {
+        guard let amount = amount, amount > 0 else { return "" }
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+
+
+    /*
+    private func loadOpportunities() {
+        // Start live updates from your scholarship collection
+        listener = startScholarshipListener { posts in
+            // Map ScholarshipPost -> OpportunityData
+            let mapped: [OpportunityData] = posts.map { p in
+                OpportunityData(
+                    id: p.id,
+                    title: p.name,
+                    type: "Scholarship",
+                    deadline: parseDeadline(p.applicationDeadline),
+                    awardAmount: formatAward(p.awardAmount),
+                    eligibility: p.organization.isEmpty ? "See details" : p.organization,
+                    details: p.description,
+                    link: p.website ?? "",
+                    tags: [] // add if you later store tags in Firestore
+                )
+            }
+            DispatchQueue.main.async {
+                self.opportunities = mapped
+                self.currentIndex = 0
+            }
+        }
+    }
+
+    // If you want to stop listening (e.g., onDisappear)
+    private func stopListening() {
+        listener?.remove()
+        listener = nil
+    }
+
+    // Helpers
+    private func parseDeadline(_ raw: String?) -> Date {
+        guard let raw = raw, !raw.isEmpty else { return Date() }
+        // Try several common formats (adjust to your data)
+        let fmts = ["yyyy-MM-dd", "MM/dd/yyyy", "MMMM d, yyyy", "MMMM d"] // e.g., "November 13"
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        for f in fmts {
+            df.dateFormat = f
+            if let d = df.date(from: raw) {
+                // If no year (e.g., "November 13"), assume current year
+                if f == "MMMM d" {
+                    let y = Calendar.current.component(.year, from: Date())
+                    return Calendar.current.date(bySetting: .year, value: y, of: d) ?? d
+                }
+                return d
+            }
+        }
+        return Date()
+    }
+
+    private func formatAward(_ amount: Int?) -> String {
+        guard let amount = amount, amount > 0 else { return "" }
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+    
+    */
+/*
+    
+    private func loadOpportunities() {
         let today = Date()
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         
-        opportunities = [
-            OpportunityData(
-                id: "1",
-                title: "Gates Millennium Scholars Program",
-                type: "Scholarship",
-                deadline: formatter.date(from: "2024-12-15") ?? today,
-                awardAmount: "Full tuition + expenses",
-                eligibility: "High school seniors, minimum 3.3 GPA, leadership potential",
-                details: "The Gates Millennium Scholars Program provides outstanding minority students with an opportunity to complete an undergraduate college education in any discipline they choose.",
-                link: "https://www.gmsp.org",
-                tags: ["STEM", "Leadership", "Minority Programs"]
-            ),
-            OpportunityData(
-                id: "2",
-                title: "MIT Summer Research Program",
-                type: "Program",
-                deadline: formatter.date(from: "2024-12-30") ?? today,
-                awardAmount: "$5,000 stipend",
-                eligibility: "Undergraduate students, STEM majors, minimum 3.0 GPA",
-                details: "10-week summer research program at MIT for underrepresented students in STEM fields.",
-                link: "https://web.mit.edu/srp",
-                tags: ["STEM", "Research", "Women in Tech"]
-            ),
-            OpportunityData(
-                id: "3",
-                title: "Stanford University",
-                type: "College",
-                deadline: formatter.date(from: "2024-11-30") ?? today,
-                awardAmount: "Need-based financial aid",
-                eligibility: "High school seniors, strong academic record",
-                details: "World-renowned private research university with comprehensive financial aid program.",
-                link: "https://admission.stanford.edu",
-                tags: ["STEM", "Arts", "Leadership"]
-            ),
-            OpportunityData(
-                id: "4",
-                title: "Coca-Cola Scholars Foundation",
-                type: "Scholarship",
-                deadline: formatter.date(from: "2025-01-15") ?? today,
-                awardAmount: "$20,000",
-                eligibility: "High school seniors, minimum 3.0 GPA, leadership and service",
-                details: "Merit-based scholarship program recognizing students who demonstrate leadership and service.",
-                link: "https://www.coca-colascholarsfoundation.org",
-                tags: ["Leadership", "Community Service"]
-            ),
-            OpportunityData(
-                id: "5",
-                title: "Google Summer of Code",
-                type: "Program",
-                deadline: formatter.date(from: "2025-02-15") ?? today,
-                awardAmount: "$3,000 stipend",
-                eligibility: "University students, programming experience",
-                details: "Global program that brings new contributors into open source software development.",
-                link: "https://summerofcode.withgoogle.com",
-                tags: ["STEM", "Women in Tech", "Programming"]
-            ),
-            OpportunityData(
-                id: "6",
-                title: "Harvard University",
-                type: "College",
-                deadline: formatter.date(from: "2024-12-01") ?? today,
-                awardAmount: "Need-based financial aid",
-                eligibility: "High school seniors, exceptional academic achievement",
-                details: "Ivy League institution with generous financial aid for families earning less than $65,000.",
-                link: "https://college.harvard.edu",
-                tags: ["STEM", "Arts", "Leadership"]
-            ),
-            OpportunityData(
-                id: "7",
-                title: "Women in Technology Scholarship",
-                type: "Scholarship",
-                deadline: formatter.date(from: "2025-01-30") ?? today,
-                awardAmount: "$5,000",
-                eligibility: "Female students, STEM majors, minimum 3.0 GPA",
-                details: "Scholarship supporting women pursuing degrees in technology and engineering.",
-                link: "https://www.womenintechnology.org",
-                tags: ["STEM", "Women in Tech"]
-            ),
-            OpportunityData(
-                id: "8",
-                title: "NASA Internship Program",
-                type: "Program",
-                deadline: formatter.date(from: "2025-03-15") ?? today,
-                awardAmount: "$6,000 stipend",
-                eligibility: "Undergraduate/graduate students, STEM majors",
-                details: "Hands-on research experience at NASA centers across the country.",
-                link: "https://intern.nasa.gov",
-                tags: ["STEM", "Research", "Women in Tech"]
-            )
-        ]
+        //var listener: ListenerRegistration?
+
+        // Start listening
+        listener = startScholarshipListener { posts in
+            let mapped: [OpportunityData] = posts.map { p in
+                OpportunityData(
+                    id: p.id,
+                       title: p.name,
+                       type: "Scholarship",
+                       deadline: parseDeadline(p.applicationDeadline),
+                       awardAmount: formatAward(p.awardAmount),
+                       eligibility: p.organization.isEmpty ? "See details" : p.organization,
+                       details: p.description,
+                       link: p.website ?? "",
+                       tags: []
+                )
+                
+            }
+            DispatchedQueue.main.async {
+                self.opportunities = mapped
+                self.currentIndex = 0
+            }
+            
+            print("Live update: \(posts.count) scholarships found")
+        }
+        
+    
+         
         print("Loaded \(opportunities.count) opportunities")
         currentIndex = 0
     }
+    */
     
     private func updateSwipeDirection(value: DragGesture.Value) {
         let threshold: CGFloat = 50
@@ -2852,3 +2959,5 @@ struct ResourceCard: View {
 #Preview {
     ContentView()
 }
+
+
