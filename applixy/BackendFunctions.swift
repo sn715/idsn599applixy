@@ -167,3 +167,29 @@ func startScholarshipListener(onUpdate: @escaping ([ScholarshipPost]) -> Void) -
 
     return listener
 }
+
+
+final class MentorsVM: ObservableObject {
+    @Published var mentors: [MentorProfile] = []
+    private var listener: ListenerRegistration?
+
+    func start() {
+        listener = Firestore.firestore()
+            .collection("mentors")
+            .order(by: "timestamp", descending: true) // uses your existing "timestamp"
+            .addSnapshotListener { [weak self] snap, err in
+                guard let self = self, let docs = snap?.documents else {
+                    self?.mentors = []
+                    return
+                }
+                self.mentors = docs.compactMap { MentorProfile(doc: $0) }
+            }
+    }
+
+    func stop() {
+        listener?.remove()
+        listener = nil
+    }
+
+    deinit { stop() }
+}

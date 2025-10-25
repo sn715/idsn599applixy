@@ -2369,32 +2369,29 @@ struct InfoRow: View {
 struct MentorsView: View {
     @State private var mentors: [MentorProfile] = []
     @State private var showingAddMentor = false
-    
+    @State private var listener: ListenerRegistration? = nil
+    @State private var loading = false
+    @State private var loadError: String?
+
     var body: some View {
         NavigationView {
             ZStack {
-                Color.applixyBackground
-                    .ignoresSafeArea()
-                
+                Color.applixyBackground.ignoresSafeArea()
+
                 VStack(spacing: 0) {
-                    HStack{
-                        // Standard Header
-                        StandardHeaderView(
-                            title: "Mentors",
-                            subtitle: " "
-                        )
-                        
+                    // Header
+                    HStack {
+                        StandardHeaderView(title: "Mentors", subtitle: " ")
                         Spacer()
-                        
-                        // Add Mentor Button
-                        Button(action: {
-                            showingAddMentor = true
-                        }) {
+                        Button(action: { showingAddMentor = true }) {
                             ZStack {
                                 Circle()
                                     .fill(
-                                        LinearGradient(colors: [.applixyPrimary, .applixySecondary],
-                                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        LinearGradient(
+                                            colors: [.applixyPrimary, .applixySecondary],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
                                     .frame(width: 54, height: 54)
                                     .shadow(color: .applixyPrimary.opacity(0.25), radius: 12, x: 0, y: 6)
@@ -2404,114 +2401,128 @@ struct MentorsView: View {
                                     .foregroundColor(.applixyWhite)
                             }
                         }
-                        .padding(.trailing, 20) // Add padding to match the reference image
+                        .padding(.trailing, 20)
                     }
-                    .padding(.horizontal, 20) // Add horizontal padding to the entire header
-                    
+                    .padding(.horizontal, 20)
+
                     // Content
-                    if mentors.isEmpty {
-                        emptyStateView
-                    } else {
-                        ScrollView {
-                            LazyVGrid(columns: [
-                                GridItem(.flexible(), spacing: 16),
-                                GridItem(.flexible(), spacing: 16)
-                            ], spacing: 16) {
-                                ForEach(mentors) { mentor in
-                                    MentorGridCard(mentor: mentor) {
-                                        // Mentor card tapped - could add detail view here later
-                                        print("Mentor tapped: \(mentor.name)")
+                    Group {
+                        if loading {
+                            VStack(spacing: 12) {
+                                ProgressView()
+                                Text("Loading mentors…")
+                                    .foregroundColor(.applixySecondary)
+                                    .font(.subheadline)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if let err = loadError {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.orange)
+                                Text("Couldn’t load mentors")
+                                    .font(.title3).fontWeight(.semibold)
+                                    .foregroundColor(.applixyDark)
+                                Text(err)
+                                    .font(.footnote)
+                                    .foregroundColor(.applixySecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 24)
+                                Button("Retry") { restartListener() }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color.applixyPrimary.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if mentors.isEmpty {
+                            emptyStateView
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                LazyVGrid(
+                                    columns: [
+                                        GridItem(.flexible(), spacing: 16),
+                                        GridItem(.flexible(), spacing: 16)
+                                    ],
+                                    spacing: 16
+                                ) {
+                                    ForEach(mentors) { mentor in
+                                        MentorGridCard(mentor: mentor) {
+                                            // Handle tap (e.g., push a detail view)
+                                            print("Mentor tapped: \(mentor.name)")
+                                        }
                                     }
                                 }
+                                .padding()
                             }
-                            .padding()
                         }
                     }
                 }
             }
-           // .navigationTitle("Mentors")
-            .onAppear {
-                loadMentors()
-            }
+            .onAppear { restartListener() }
+            .onDisappear { stopListener() }
             .sheet(isPresented: $showingAddMentor) {
-                AddMentorView()
+                // When AddMentorView succeeds, the live listener will auto-refresh this grid.
+                AddMentorView(onSuccess: {
+                    // No manual reload needed since snapshot listener is live,
+                    // but you can still haptically nudge or log.
+                })
             }
         }
     }
-    
-    
+
     // MARK: - Empty State
     private var emptyStateView: some View {
         VStack(spacing: 30) {
             Image(systemName: "person.2.circle.fill")
                 .font(.system(size: 80))
                 .foregroundColor(.applixyLight)
-            
             Text("No mentors available")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(.title2).fontWeight(.semibold)
                 .foregroundColor(.applixyDark)
-            
             Text("Check back later for mentor profiles")
                 .foregroundColor(.applixySecondary)
                 .multilineTextAlignment(.center)
         }
         .padding()
     }
-    
-    private func loadMentors() {
-        mentors = [
-            MentorProfile(
-                id: "1",
-                name: "Dr. Sarah Chen",
-                specialty: "STEM Applications",
-                experience: "10+ years",
-                contactInfo: "sarah.chen@example.com",
-                bio: "Former MIT admissions officer with 10+ years experience helping students with STEM applications. Specializes in engineering and computer science programs.",
-                rating: 4.9,
-                sessionsCompleted: 150
-            ),
-            MentorProfile(
-                id: "2",
-                name: "Marcus Johnson",
-                specialty: "Scholarship Strategy",
-                experience: "8+ years",
-                contactInfo: "marcus.j@example.com",
-                bio: "Scholarship expert who has helped students secure over $2M in funding. Focuses on merit-based and need-based scholarships.",
-                rating: 4.8,
-                sessionsCompleted: 200
-            ),
-            MentorProfile(
-                id: "3",
-                name: "Dr. Elena Rodriguez",
-                specialty: "First-Gen Support",
-                experience: "12+ years",
-                contactInfo: "elena.rodriguez@example.com",
-                bio: "First-generation college graduate and admissions counselor specializing in supporting FGLI students through the application process.",
-                rating: 4.9,
-                sessionsCompleted: 180
-            ),
-            MentorProfile(
-                id: "4",
-                name: "James Park",
-                specialty: "Ivy League Prep",
-                experience: "15+ years",
-                contactInfo: "james.park@example.com",
-                bio: "Harvard graduate and former admissions reader with expertise in competitive college applications and essay writing.",
-                rating: 4.7,
-                sessionsCompleted: 300
-            ),
-            MentorProfile(
-                id: "5",
-                name: "Dr. Aisha Williams",
-                specialty: "Minority Programs",
-                experience: "9+ years",
-                contactInfo: "aisha.williams@example.com",
-                bio: "Diversity and inclusion expert with deep knowledge of minority-focused scholarships and programs. Passionate about equity in education.",
-                rating: 4.8,
-                sessionsCompleted: 120
-            )
-        ]
+
+    // MARK: - Firestore
+    private func restartListener() {
+        stopListener()
+        startListener()
+    }
+
+    private func startListener() {
+        loading = true
+        loadError = nil
+
+        let db = Firestore.firestore()
+        // Sort newest first; adjust field name if you use "createdAt" instead of "timestamp"
+        listener = db.collection("mentors")
+            .order(by: "timestamp", descending: true)
+            .addSnapshotListener { snapshot, error in
+                loading = false
+
+                if let error = error {
+                    loadError = error.localizedDescription
+                    mentors = []
+                    return
+                }
+
+                guard let docs = snapshot?.documents else {
+                    mentors = []
+                    return
+                }
+
+                mentors = docs.compactMap { MentorProfile(doc: $0) }
+            }
+    }
+
+    private func stopListener() {
+        listener?.remove()
+        listener = nil
     }
 }
 
@@ -2519,80 +2530,159 @@ struct MentorProfile: Identifiable {
     let id: String
     let name: String
     let specialty: String
-    let experience: String
-    let contactInfo: String
     let bio: String
-    let rating: Double
-    let sessionsCompleted: Int
+    let email: String
+    let phone: String
+    let website: String
+
+    // Optional image overrides from Firestore
+    let imageURL: String?
+    let imageName: String?
+
+    // ✅ Add these so MentorCard compiles
+    let rating: Double?
+    let sessionsCompleted: Int?
+    let experience: String?
+    let contactInfo: String?
+
+    init?(doc: QueryDocumentSnapshot) {
+        let d = doc.data()
+        self.id = doc.documentID
+        self.name = d["name"] as? String ?? ""
+        self.specialty = d["specialty"] as? String ?? ""
+        self.bio = d["description"] as? String ?? ""
+        self.email = d["email"] as? String ?? ""
+        self.phone = d["phone"] as? String ?? ""
+        self.website = d["website"] as? String ?? ""
+        self.imageURL = d["imageURL"] as? String
+        self.imageName = d["imageName"] as? String
+
+        // ✅ Safely read optional fields (provide sensible defaults if missing)
+        self.rating = d["rating"] as? Double
+        self.sessionsCompleted = d["sessionsCompleted"] as? Int
+        self.experience = d["experience"] as? String
+        // Prefer explicit contactInfo; fall back to email if not present
+        if let ci = d["contactInfo"] as? String, !ci.isEmpty {
+            self.contactInfo = ci
+        } else if let em = d["email"] as? String, !em.isEmpty {
+            self.contactInfo = em
+        } else {
+            self.contactInfo = nil
+        }
+    }
 }
+
 
 struct MentorCard: View {
     let mentor: MentorProfile
     let onBookMeeting: () -> Void
-    
+
+    // Map specialty → asset name (same mapping style as MentorGridCard)
+    private static let specialtyImage: [String: String] = [
+        "technology": "mentor_tech",
+        "engineering": "mentor_engineering",
+        "design": "mentor_design",
+        "business": "mentor_business",
+        "marketing": "mentor_marketing",
+        "finance": "mentor_finance",
+        "healthcare": "mentor_health",
+        "education": "mentor_education",
+        "law": "mentor_law",
+        "science": "mentor_science",
+        "arts": "mentor_arts",
+        "other": "mentor"
+    ]
+
+    private var resolvedAssetName: String {
+        if let explicit = mentor.imageName, !explicit.isEmpty {
+            return explicit
+        }
+        let key = mentor.specialty.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return Self.specialtyImage[key] ?? "mentor" // fallback
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(mentor.name)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text(mentor.specialty)
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
-                            .font(.caption)
-                        Text(String(format: "%.1f", mentor.rating))
-                            .font(.caption)
-                            .foregroundColor(.applixyDark)
+        VStack(spacing: 16) {
+            // Top image (remote URL if provided, else local asset by specialty)
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if let urlStr = mentor.imageURL, let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable().scaledToFill()
+                            case .failure(_):
+                                Image(resolvedAssetName).resizable().scaledToFill()
+                            case .empty:
+                                Color.gray.opacity(0.15)
+                            @unknown default:
+                                Image(resolvedAssetName).resizable().scaledToFill()
+                            }
+                        }
+                    } else {
+                        Image(resolvedAssetName)
+                            .resizable()
+                            .scaledToFill()
                     }
-                    
-                    Text("\(mentor.sessionsCompleted) sessions")
-                        .font(.caption2)
-                        .foregroundColor(.applixySecondary)
                 }
+                .frame(height: 160)
+                .clipped()
+                .cornerRadius(12)
+
+                // Subtle star (favorite) icon
+                Image(systemName: "star.fill")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(8)
+                    .background(Color.black.opacity(0.25))
+                    .clipShape(Circle())
+                    .padding(8)
             }
-            
+
+            // Title + specialty
+            VStack(alignment: .leading, spacing: 6) {
+                Text(mentor.name)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.applixyDark)
+
+                Text(mentor.specialty)
+                    .font(.subheadline)
+                    .foregroundColor(.applixySecondary)
+            }
+
             // Bio
-            Text(mentor.bio)
-                .font(.body)
-                .foregroundColor(.applixyDark)
-                .lineLimit(3)
-            
-            // Experience and Contact
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Experience")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                    Text(mentor.experience)
-                        .font(.subheadline)
-                        .foregroundColor(.applixyDark)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Contact")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                    Text(mentor.contactInfo)
-                        .font(.caption)
-                        .foregroundColor(.applixyPrimary)
-                }
+            if !mentor.bio.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(mentor.bio)
+                    .font(.body)
+                    .foregroundColor(.applixyDark)
+                    .lineLimit(4)
             }
-            
-            // Book Meeting Button
+
+            // Contact chips (email / phone / website if present)
+            HStack(spacing: 8) {
+                if !mentor.email.isEmpty {
+                    contactChip(
+                        system: "envelope.fill",
+                        text: mentor.email
+                    )
+                }
+                if !mentor.phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    contactChip(
+                        system: "phone.fill",
+                        text: mentor.phone
+                    )
+                }
+                if !mentor.website.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    contactChip(
+                        system: "globe",
+                        text: urlDisplay(mentor.website)
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+
+            // Book Meeting button
             Button(action: onBookMeeting) {
                 HStack {
                     Image(systemName: "calendar.badge.plus")
@@ -2603,36 +2693,100 @@ struct MentorCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(
-                    LinearGradient(
-                        colors: [.applixyPrimary, .applixySecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    LinearGradient(colors: [.applixyPrimary, .applixySecondary],
+                                   startPoint: .leading, endPoint: .trailing)
                 )
-                .cornerRadius(25)
+                .cornerRadius(12)
+                .shadow(color: .applixyPrimary.opacity(0.25), radius: 6, x: 0, y: 3)
             }
         }
-        .padding(20)
+        .padding(16)
         .background(Color.applixyWhite)
         .cornerRadius(16)
         .shadow(color: .applixyLight, radius: 8, x: 0, y: 4)
     }
+
+    // MARK: - Helpers
+
+    @ViewBuilder
+    private func contactChip(system: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: system)
+            Text(text)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .font(.caption)
+        .foregroundColor(.applixyDark)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.applixyLight.opacity(0.25))
+        .cornerRadius(10)
+    }
+
+    private func urlDisplay(_ url: String) -> String {
+        var s = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("https://") { s.removeFirst("https://".count) }
+        if s.hasPrefix("http://") { s.removeFirst("http://".count) }
+        if s.hasSuffix("/") { s.removeLast() }
+        return s
+    }
 }
+
 
 // MARK: - Mentor Grid Card
 struct MentorGridCard: View {
     let mentor: MentorProfile
     let onBookMeeting: () -> Void
     
+    // Map specialty → asset name (add these assets to your catalog)
+    private static let specialtyImage: [String: String] = [
+        "technology": "mentor_tech",
+        "engineering": "mentor_engineering",
+        "design": "mentor_design",
+        "business": "mentor_business",
+        "marketing": "mentor_marketing",
+        "finance": "mentor_finance",
+        "healthcare": "mentor_health",
+        "education": "mentor_education",
+        "law": "mentor_law",
+        "science": "mentor_science",
+        "arts": "mentor_arts",
+        "other": "mentor"
+    ]
+    
+    private var resolvedAssetName: String {
+        if let explicit = mentor.imageName, !explicit.isEmpty {
+            return explicit
+        }
+        let key = mentor.specialty.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return Self.specialtyImage[key] ?? "mentor" // fallback
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
-            // Image placeholder with overlay
             ZStack {
-                // Image placeholder
-                Image("mentor")
+                // If a remote URL exists, load it; else use local asset mapped by specialty
+                if let urlStr = mentor.imageURL, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().scaledToFill()
+                        case .failure(_):
+                            Image(resolvedAssetName).resizable().scaledToFill()
+                        case .empty:
+                            Color.gray.opacity(0.15)
+                        @unknown default:
+                            Image(resolvedAssetName).resizable().scaledToFill()
+                        }
+                    }
+                } else {
+                    Image(resolvedAssetName)
                         .resizable()
-                        
-                // Star icon in top right
+                        .scaledToFill()
+                }
+                
+                // Star icon
                 VStack {
                     HStack {
                         Spacer()
@@ -2644,7 +2798,7 @@ struct MentorGridCard: View {
                     Spacer()
                 }
                 
-                // Name and specialty overlay at bottom
+                // Name + specialty overlay
                 VStack {
                     Spacer()
                     HStack {
@@ -2656,31 +2810,26 @@ struct MentorGridCard: View {
                             
                             Text(mentor.specialty)
                                 .font(.caption)
-                                .foregroundColor(.white)
+                                .foregroundColor(.white.opacity(0.95))
                         }
                         Spacer()
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(
-                        LinearGradient(
-                            colors: [.clear, .black.opacity(0.7)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                        LinearGradient(colors: [.clear, .black.opacity(0.75)],
+                                       startPoint: .top, endPoint: .bottom)
                     )
                 }
             }
+            .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 180)
+            .clipped()
             .cornerRadius(12, corners: [.topLeft, .topRight])
-            
-            
         }
         .background(Color.applixyWhite)
         .cornerRadius(12)
         .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
-        .onTapGesture {
-            onBookMeeting()
-        }
+        .onTapGesture { onBookMeeting() }
     }
 }
 
