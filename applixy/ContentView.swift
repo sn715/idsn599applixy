@@ -466,7 +466,38 @@ struct CreatePasswordView: View {
                password.contains(where: { $0.isUppercase }) &&
                password.contains(where: { $0.isNumber })
     }
-    
+    private func createAccount() {
+        guard isFormValid else {
+            alertMessage = "Please ensure all fields are filled and passwords match"
+            showingAlert = true
+            return
+        }
+
+        Task {
+            do {
+                // 1) Create Firebase Auth user
+                let result = try await Auth.auth().createUser(withEmail: email, password: password)
+
+                // 2) Create Firestore profile document
+                try await UserService.createUserDocument(
+                    uid: result.user.uid,
+                    email: email
+                )
+
+                // 3) Proceed to onboarding
+                await MainActor.run {
+                    showingCreatePassword = false
+                    showingOnboarding = true
+                }
+            } catch {
+                await MainActor.run {
+                    alertMessage = "Sign up failed: \(error.localizedDescription)"
+                    showingAlert = true
+                }
+            }
+        }
+    }
+/*
     private func createAccount() {
         if isFormValid {
             // Here you would typically save the email and password
@@ -478,6 +509,7 @@ struct CreatePasswordView: View {
             showingAlert = true
         }
     }
+ */
 }
 
 // MARK: - Sign In View
@@ -636,7 +668,34 @@ struct SignInView: View {
             }
         }
     }
-    
+    private func signIn() {
+        if isEmailSignIn {
+            guard !email.isEmpty, !password.isEmpty else {
+                alertMessage = "Please fill in email and password"
+                showingAlert = true
+                return
+            }
+            Task {
+                do {
+                    _ = try await Auth.auth().signIn(withEmail: email, password: password)
+                    await MainActor.run {
+                        showingMainApp = true
+                    }
+                } catch {
+                    await MainActor.run {
+                        alertMessage = "Sign in failed: \(error.localizedDescription)"
+                        showingAlert = true
+                    }
+                }
+            }
+        } else {
+            // (Optional) Implement phone auth later with PhoneAuthProvider
+            alertMessage = "Phone sign-in not implemented yet."
+            showingAlert = true
+        }
+    }
+
+    /*
     private func signIn() {
         // Mock sign in logic - replace with actual authentication
         if isEmailSignIn && !email.isEmpty && !password.isEmpty {
@@ -650,6 +709,7 @@ struct SignInView: View {
             showingAlert = true
         }
     }
+    */
 }
 
 // MARK: - Onboarding Flow View
@@ -3721,6 +3781,41 @@ struct AddMentorView: View {
             }
     }
 }
+
+struct AppUser: Codable {
+    let uid: String
+    let email: String
+    let createdAt: Timestamp
+    var firstName: String?
+    var lastName: String?
+    var onboardingComplete: Bool
+}
+
+enum UserService {
+    static let coll = Firestore.firestore().collection("users")
+
+    static func createUserDocument(uid: String, email: String,
+                                   firstName: String? = nil,
+                                   lastName: String? = nil,
+                                   onboardingComplete: Bool = false) async throws {
+        let user = AppUser(
+            uid: uid,
+            email: email.lowercased(),
+            createdAt: Timestamp(date: Date()),
+            firstName: firstName,
+            lastName: lastName,
+            onboardingComplete: onboardingComplete
+        )
+        try coll.document(uid).setData(from: user, merge: true)
+    }
+
+    static func fetchUser(uid: String) async throws -> AppUser? {
+        let snap = try await coll.document(uid).getDocument()
+        return try snap.data(as: AppUser?.self)
+    }
+}
+
+
 
 #Preview {
     ContentView()
