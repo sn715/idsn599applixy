@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
+import FirebaseAuth
 
 // MARK: - Brand Colors
 extension Color {
@@ -46,19 +48,39 @@ extension Color {
 
 struct ContentView: View {
     @State private var showingOnboarding = false
+    @State private var showingSignIn = false
+    @State private var showingCreatePassword = false
     @State private var currentStep = 0
     @State private var userProfile = UserProfileData()
     @State private var showingMainApp = false
+    @StateObject private var savedOpportunitiesManager = SavedOpportunitiesManager()
     
     var body: some View {
-        if showingOnboarding {
+        if showingMainApp {
+            MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
+        } else if showingCreatePassword {
+            CreatePasswordView(
+                showingCreatePassword: $showingCreatePassword,
+                showingOnboarding: $showingOnboarding
+            )
+        } else if showingOnboarding {
             OnboardingFlowView(
                 currentStep: $currentStep,
                 userProfile: $userProfile,
-                showingMainApp: $showingMainApp
+                showingMainApp: $showingMainApp,
+                savedOpportunitiesManager: savedOpportunitiesManager
+            )
+        } else if showingSignIn {
+            SignInView(
+                showingMainApp: $showingMainApp,
+                showingSignIn: $showingSignIn
             )
         } else {
-            LandingPageView(showingOnboarding: $showingOnboarding)
+            LandingPageView(
+                showingOnboarding: $showingOnboarding,
+                showingSignIn: $showingSignIn,
+                showingCreatePassword: $showingCreatePassword
+            )
         }
     }
 }
@@ -66,12 +88,8 @@ struct ContentView: View {
 // MARK: - Landing Page View
 struct LandingPageView: View {
     @Binding var showingOnboarding: Bool
-    @State private var logoScale: CGFloat = 0.8
-    @State private var logoOpacity: Double = 0.0
-    @State private var textOffset: CGFloat = 50
-    @State private var textOpacity: Double = 0.0
-    @State private var buttonOffset: CGFloat = 30
-    @State private var buttonOpacity: Double = 0.0
+    @Binding var showingSignIn: Bool
+    @Binding var showingCreatePassword: Bool
     
     var body: some View {
         ZStack {
@@ -88,88 +106,331 @@ struct LandingPageView: View {
                 
                 // Logo Section
                 VStack(spacing: 30) {
-                    // Applixy Logo
-                    ZStack {
-                        // Magnifying glass background circle
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.applixySecondary, .applixyLight],
-                                    startPoint: .bottomTrailing,
-                                    endPoint: .topLeading
-                                )
-                            )
+                    // App Logo Placeholder
+                    Image("app-logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
                             .frame(width: 120, height: 120)
-                            .shadow(color: .applixyPrimary.opacity(0.2), radius: 20, x: 0, y: 10)
-                        
-                        // Magnifying glass frame
-                        Circle()
-                            .stroke(Color.applixyPrimary, lineWidth: 8)
-                            .frame(width: 120, height: 120)
-                        
-                        // Star inside the magnifying glass
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 40, weight: .bold))
-                            .foregroundColor(.applixyDark)
-                    }
-                    .scaleEffect(logoScale)
-                    .opacity(logoOpacity)
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 1.0)) {
-                            logoScale = 1.0
-                            logoOpacity = 1.0
-                        }
-                    }
-                    
                     // App Name and Tagline
                     VStack(spacing: 12) {
                         Text("Applixy")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
+                            .font(.system(size: 30, weight: .bold))
                             .foregroundColor(.applixyDark)
-                            .offset(y: textOffset)
-                            .opacity(textOpacity)
                         
-                        Text("Discover your perfect opportunities")
-                            .font(.title2)
-                            .foregroundColor(.applixySecondary)
-                            .multilineTextAlignment(.center)
-                            .offset(y: textOffset)
-                            .opacity(textOpacity)
-                        
-                        Text("Find scholarships, colleges, and programs tailored just for you")
-                            .font(.subheadline)
-                            .foregroundColor(.applixySecondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
-                            .offset(y: textOffset)
-                            .opacity(textOpacity)
+                        /*Text("Sign in to continue")
+                            .font(.system(size: 20))
+                            .fontWeight(.semibold)
+                            .foregroundColor(.applixyDark)
+                            */
                     }
-                    .onAppear {
-                        withAnimation(.easeOut(duration: 0.8).delay(0.5)) {
-                            textOffset = 0
-                            textOpacity = 1.0
+                }
+                
+                //Spacer()
+                
+                // Sign In/Sign Up Buttons
+                VStack(spacing: 16) {
+                    // Sign in with email button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                            showingSignIn = true
+                    }
+                }) {
+                        Text("Sign in")
+                            .font(.system(size: 20))
+                            //.fontWeight(.semibold)
+                    .foregroundColor(.applixyWhite)
+                            .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.applixyPrimary)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+                    
+                    // Sign up button
+                    Button(action: {
+                        showingCreatePassword = true
+                    }) {
+                        Text("Sign up")
+                            .font(.system(size: 16))
+                            //.fontWeight(.semibold)
+                            .foregroundColor(.applixySecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.applixyWhite)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.applixySecondary, lineWidth: 1)
+                            )
+                            .cornerRadius(12)
+                    }
+                }
+                .padding(.horizontal, 60)
+                
+                /* Sign up link
+                Button("Don't have an account? Sign up") {
+                    showingCreatePassword = true
+                }
+                .font(.subheadline)
+                .foregroundColor(.applixyPrimary)
+                .padding(.top, 8)*/
+                
+                // Or sign up with section
+                VStack(spacing: 20) {
+                    // Or sign up with divider
+                    HStack {
+                        Rectangle()
+                            .fill(Color.applixyLight)
+                            .frame(height: 1)
+                        
+                        Text("or continue with")
+                            .font(.system(size: 12))
+                            .foregroundColor(.applixyDark)
+                            .padding(.horizontal, 10)
+                        
+                        Rectangle()
+                            .fill(Color.applixyLight)
+                            .frame(height: 1)
+                    }
+                    .padding(.horizontal, 18)
+                    
+                    // Social media buttons
+                    HStack(spacing: 16) {
+                        // Facebook button
+                        Button(action: {
+                            // Facebook sign up action
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.applixyWhite)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.applixySecondary, lineWidth: 1)
+                                    )
+                                    .frame(width: 60, height: 60)
+                                
+                                Text("f")
+                            .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
+                        }
+                        
+                        // Google button
+                        Button(action: {
+                            // Google sign up action
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.applixyWhite)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.applixySecondary, lineWidth: 1)
+                                    )
+                                    .frame(width: 60, height: 60)
+                                
+                                Text("G")
+                            .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
+                        }
+                        
+                        // Apple button
+                        Button(action: {
+                            // Apple sign up action
+                        }) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.applixyWhite)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.applixySecondary, lineWidth: 1)
+                                    )
+                                    .frame(width: 60, height: 60)
+                                
+                                Image(systemName: "apple.logo")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
                         }
                     }
                 }
                 
-                Spacer()
-                
-                // Get Started Button
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        showingOnboarding = true
+                // Terms and Privacy links
+                HStack(spacing: 20) {
+                    Button("Terms of use") {
+                        // Terms of use action
                     }
-                }) {
-                    HStack(spacing: 12) {
-                        Text("Get Started")
-                            .font(.title3)
-                            .fontWeight(.semibold)
+                    .font(.subheadline)
+                            .foregroundColor(.applixySecondary)
                         
-                        Image(systemName: "arrow.right")
-                            .font(.title3)
+                    Button("Privacy Policy") {
+                        // Privacy policy action
                     }
+                            .font(.subheadline)
+                            .foregroundColor(.applixySecondary)
+                }
+                
+                // Decorative elements
+                
+                .padding(.bottom, 50)
+            }
+        }
+    }
+}
+
+// MARK: - Create Password View
+struct CreatePasswordView: View {
+    @Binding var showingCreatePassword: Bool
+    @Binding var showingOnboarding: Bool
+    @State private var email = ""
+    @State private var password = ""
+    @State private var confirmPassword = ""
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
+    
+    var body: some View {
+        ZStack {
+            Color.applixyBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Back button
+                HStack {
+                Button(action: {
+                        showingCreatePassword = false
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Back")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.applixySecondary)
+                    }
+                    .padding(.top, 20)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+                
+                // Standard Header
+                StandardHeaderView(
+                    title: "Create Account",
+                    subtitle: " "
+                )
+                
+                ScrollView {
+                    VStack(spacing: 30) {
+                        // Email field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Email Address")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            HStack {
+                                Image(systemName: "envelope.fill")
+                                    .foregroundColor(.applixySecondary)
+                                    .frame(width: 20)
+                                
+                                TextField("Enter your email", text: $email)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .keyboardType(.emailAddress)
+                                    .autocapitalization(.none)
+                            }
+                            .padding()
+                            .background(Color.applixyWhite)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                        }
+                        
+                        // Password field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Password")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.applixySecondary)
+                                    .frame(width: 20)
+                                
+                                SecureField("Create a password", text: $password)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                            }
+                            .padding()
+                            .background(Color.applixyWhite)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                        }
+                        
+                        // Confirm Password field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Confirm Password")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.applixySecondary)
+                                    .frame(width: 20)
+                                
+                                SecureField("Confirm your password", text: $confirmPassword)
+                                    .textFieldStyle(PlainTextFieldStyle())
+                            }
+                            .padding()
+                            .background(Color.applixyWhite)
+                            .cornerRadius(12)
+                            .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                        }
+                        
+                        // Password requirements
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Password Requirements:")
+                                .font(.caption)
+                            .fontWeight(.semibold)
+                                .foregroundColor(.applixyDark)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Image(systemName: password.count >= 8 ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(password.count >= 8 ? .green : .applixySecondary)
+                                        .font(.caption)
+                                    Text("At least 8 characters")
+                                        .font(.caption)
+                                        .foregroundColor(.applixySecondary)
+                                }
+                                
+                                HStack {
+                                    Image(systemName: password.contains(where: { $0.isUppercase }) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(password.contains(where: { $0.isUppercase }) ? .green : .applixySecondary)
+                                        .font(.caption)
+                                    Text("One uppercase letter")
+                                        .font(.caption)
+                                        .foregroundColor(.applixySecondary)
+                                }
+                                
+                                HStack {
+                                    Image(systemName: password.contains(where: { $0.isNumber }) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(password.contains(where: { $0.isNumber }) ? .green : .applixySecondary)
+                                        .font(.caption)
+                                    Text("One number")
+                                        .font(.caption)
+                                        .foregroundColor(.applixySecondary)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color.applixyLight.opacity(0.3))
+                        .cornerRadius(12)
+                        
+                        // Create Account button
+                        Button(action: createAccount) {
+                            Text("Create Account")
+                                .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.applixyWhite)
-                    .padding(.horizontal, 40)
+                                .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(
                         LinearGradient(
@@ -178,37 +439,215 @@ struct LandingPageView: View {
                             endPoint: .trailing
                         )
                     )
-                    .cornerRadius(30)
-                    .shadow(color: .applixyPrimary.opacity(0.4), radius: 15, x: 0, y: 8)
-                }
-                .offset(y: buttonOffset)
-                .opacity(buttonOpacity)
-                .onAppear {
-                    withAnimation(.easeOut(duration: 0.8).delay(1.2)) {
-                        buttonOffset = 0
-                        buttonOpacity = 1.0
+                                .cornerRadius(12)
+                                .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+                        .disabled(!isFormValid)
+                        .opacity(isFormValid ? 1.0 : 0.6)
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 40)
                 }
-                .scaleEffect(buttonOpacity == 1.0 ? 1.0 : 0.9)
-                .animation(.easeInOut(duration: 0.2), value: buttonOpacity)
-                
-                // Decorative elements
-                HStack(spacing: 8) {
-                    ForEach(0..<3) { index in
-                        Circle()
-                            .fill(Color.applixyLight)
-                            .frame(width: 8, height: 8)
-                            .opacity(0.6)
-                            .animation(
-                                .easeInOut(duration: 1.5)
-                                .repeatForever()
-                                .delay(Double(index) * 0.3),
-                                value: buttonOpacity
-                            )
-                    }
-                }
-                .padding(.bottom, 50)
             }
+        }
+        .alert("Error", isPresented: $showingAlert) {
+            Button("OK") { }
+        } message: {
+            Text(alertMessage)
+        }
+    }
+    
+    private var isFormValid: Bool {
+        return !email.isEmpty &&
+               !password.isEmpty &&
+               !confirmPassword.isEmpty &&
+               password == confirmPassword &&
+               password.count >= 8 &&
+               password.contains(where: { $0.isUppercase }) &&
+               password.contains(where: { $0.isNumber })
+    }
+    
+    private func createAccount() {
+        if isFormValid {
+            // Here you would typically save the email and password
+            // For now, we'll just proceed to onboarding
+            showingCreatePassword = false
+            showingOnboarding = true
+        } else {
+            alertMessage = "Please ensure all fields are filled and passwords match"
+            showingAlert = true
+        }
+    }
+}
+
+// MARK: - Sign In View
+struct SignInView: View {
+    @Binding var showingMainApp: Bool
+    @Binding var showingSignIn: Bool
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var password = ""
+    @State private var isEmailSignIn = true
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color.applixyBackground
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 40) {
+                    // Back button
+                HStack {
+                Button(action: {
+                            showingSignIn = false
+                        }) {
+                HStack(spacing: 8) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 16, weight: .medium))
+                                Text("Back")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(.applixySecondary)
+                        }
+                        .padding(.top, 20)
+                        
+                        Spacer()
+                    }
+                    //.padding(.horizontal, 24)
+                    
+                    Spacer()
+                    
+                    // Header
+                    VStack(spacing: 20) {
+                        // Logo
+                        
+                        VStack(spacing: 8) {
+                            Text("Welcome back!")
+                                .font(.largeTitle)
+                                .fontWeight(.bold)
+                                .foregroundColor(.applixyDark)
+                            
+                            Text("Sign in to your account")
+                                .font(.subheadline)
+                                .foregroundColor(.applixySecondary)
+                        }
+                    }
+                    
+                    // Sign in method toggle
+                    HStack(spacing: 0) {
+                        Button("Email") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isEmailSignIn = true
+                            }
+                        }
+                        .foregroundColor(isEmailSignIn ? .applixyWhite : .applixySecondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                        .background(
+                            isEmailSignIn ? 
+                            Color.applixyPrimary : 
+                            Color.clear
+                        )
+                        .cornerRadius(8)
+                        
+                        Button("Phone") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                isEmailSignIn = false
+                            }
+                        }
+                        .foregroundColor(!isEmailSignIn ? .applixyWhite : .applixySecondary)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 24)
+                        .background(
+                            !isEmailSignIn ? 
+                            Color.applixyPrimary : 
+                            Color.clear
+                        )
+                        .cornerRadius(8)
+                    }
+                    .background(Color.applixyLight.opacity(0.3))
+                    .cornerRadius(8)
+                    
+                    // Form fields
+                    VStack(spacing: 20) {
+                        if isEmailSignIn {
+                            CustomTextField(
+                                title: "Email",
+                                text: $email,
+                                icon: "envelope.fill",
+                                keyboardType: .emailAddress
+                            )
+                        } else {
+                            CustomTextField(
+                                title: "Phone Number",
+                                text: $phone,
+                                icon: "phone.fill",
+                                keyboardType: .phonePad
+                            )
+                        }
+                        
+                        CustomTextField(
+                            title: "Password",
+                            text: $password,
+                            icon: "lock.fill",
+                            keyboardType: .default
+                        )
+                    }
+                    
+                    // Sign in button
+                    Button(action: signIn) {
+                        Text("Sign In")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                    .foregroundColor(.applixyWhite)
+                            .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [.applixyPrimary, .applixySecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                            .cornerRadius(12)
+                            .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .disabled(email.isEmpty && phone.isEmpty || password.isEmpty)
+                    .opacity((email.isEmpty && phone.isEmpty || password.isEmpty) ? 0.6 : 1.0)
+                    
+                    // Forgot password
+                    Button("Forgot password?") {
+                        // Handle forgot password
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.applixyPrimary)
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 24)
+            }
+            .navigationBarHidden(true)
+            .alert("Sign In Error", isPresented: $showingAlert) {
+                Button("OK") { }
+            } message: {
+                Text(alertMessage)
+            }
+        }
+    }
+    
+    private func signIn() {
+        // Mock sign in logic - replace with actual authentication
+        if isEmailSignIn && !email.isEmpty && !password.isEmpty {
+            // Email sign in
+            showingMainApp = true
+        } else if !isEmailSignIn && !phone.isEmpty && !password.isEmpty {
+            // Phone sign in
+            showingMainApp = true
+        } else {
+            alertMessage = "Please fill in all required fields"
+            showingAlert = true
         }
     }
 }
@@ -218,6 +657,7 @@ struct OnboardingFlowView: View {
     @Binding var currentStep: Int
     @Binding var userProfile: UserProfileData
     @Binding var showingMainApp: Bool
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     
     var body: some View {
         NavigationView {
@@ -226,8 +666,14 @@ struct OnboardingFlowView: View {
                 Color.applixyBackground
                     .ignoresSafeArea()
                 
-                VStack(spacing: 30) {
+                VStack(spacing: 0) {
                     if currentStep < 4 {
+                        // Standard Header
+                        StandardHeaderView(
+                            title: getOnboardingTitle(),
+                            subtitle: getOnboardingSubtitle()
+                        )
+                        
                         // Progress indicator
                         VStack(spacing: 10) {
                             HStack {
@@ -245,6 +691,7 @@ struct OnboardingFlowView: View {
                                 .scaleEffect(y: 2)
                         }
                         .padding(.horizontal)
+                        .padding(.top, 20)
                         
                         // Onboarding steps
                         TabView(selection: $currentStep) {
@@ -303,13 +750,34 @@ struct OnboardingFlowView: View {
                             .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
                         }
                         .padding(.horizontal)
+                        .padding(.bottom, 20)
                     }
                 }
             }
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingMainApp) {
-            MainTabView()
+            MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
+        }
+    }
+    
+    private func getOnboardingTitle() -> String {
+        switch currentStep {
+        case 0: return "General Info"
+        case 1: return "Demographics"
+        case 2: return "Academic Info"
+        case 3: return "Interests"
+        default: return "Onboarding"
+        }
+    }
+    
+    private func getOnboardingSubtitle() -> String {
+        switch currentStep {
+        case 0: return "Tell us about yourself"
+        case 1: return "Help us understand your background"
+        case 2: return "Share your academic journey"
+        case 3: return "What interests you most?"
+        default: return "Complete your profile"
         }
     }
 }
@@ -336,18 +804,7 @@ struct GeneralInfoView: View {
     @Binding var userProfile: UserProfileData
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Tell us about yourself")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Let's start with the basics")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CustomTextField(title: "First Name", text: $userProfile.firstName, icon: "person.fill")
                 CustomTextField(title: "Last Name", text: $userProfile.lastName, icon: "person.fill")
@@ -370,9 +827,9 @@ struct GeneralInfoView: View {
                 
                 CustomTextField(title: "Email", text: $userProfile.email, icon: "envelope.fill", keyboardType: .emailAddress)
                 CustomTextField(title: "Location (City, State)", text: $userProfile.location, icon: "location.fill")
-            }
         }
         .padding()
+        }
     }
 }
 
@@ -412,18 +869,7 @@ struct DemographicsView: View {
     private let races = ["American Indian/Alaska Native", "Asian", "Black/African American", "Hispanic/Latino", "Native Hawaiian/Pacific Islander", "White", "Other", "Prefer not to say"]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Demographics")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Help us personalize your experience")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CustomPicker(title: "Gender", selection: $userProfile.gender, options: genders, icon: "person.2.fill")
                 CustomPicker(title: "Race/Ethnicity", selection: $userProfile.race, options: races, icon: "globe")
@@ -431,10 +877,10 @@ struct DemographicsView: View {
                 VStack(spacing: 15) {
                     CustomToggle(title: "First Generation College Student", isOn: $userProfile.isFirstGen, icon: "graduationcap.fill")
                     CustomToggle(title: "Low Income Background", isOn: $userProfile.isLowIncome, icon: "dollarsign.circle.fill")
-                }
             }
         }
         .padding()
+        }
     }
 }
 
@@ -504,18 +950,7 @@ struct AcademicInfoView: View {
     private let gpaRanges = ["3.0-3.2", "3.2-3.5", "3.5-3.7", "3.7-4.0", "4.0+"]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Academic Information")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Tell us about your academic background")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 CustomTextField(title: "Current School", text: $userProfile.school, icon: "building.2.fill")
                 
@@ -550,10 +985,10 @@ struct AcademicInfoView: View {
                     .background(Color.applixyWhite)
                     .cornerRadius(12)
                     .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
-                }
             }
         }
         .padding()
+        }
     }
 }
 
@@ -561,23 +996,12 @@ struct InterestsView: View {
     @Binding var userProfile: UserProfileData
     
     private let interestOptions = [
-        "STEM", "Arts", "Leadership", "Business", 
+        "STEM", "Arts", "Leadership", "Business",
         "Community Service", "Women in Tech", "Minority Programs"
     ]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 25) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Your Interests")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .foregroundColor(.applixyDark)
-                
-                Text("Select all that apply to help us find the best opportunities for you")
-                    .font(.subheadline)
-                    .foregroundColor(.applixySecondary)
-            }
-            
+        ScrollView {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 15) {
                 ForEach(interestOptions, id: \.self) { interest in
                     InterestTag(
@@ -588,12 +1012,12 @@ struct InterestsView: View {
                             userProfile.interests.removeAll { $0 == interest }
                         } else {
                             userProfile.interests.append(interest)
-                        }
                     }
                 }
             }
         }
         .padding()
+        }
     }
 }
 
@@ -610,7 +1034,7 @@ struct InterestTag: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(
-                    isSelected ? 
+                    isSelected ?
                     LinearGradient(
                         colors: [.applixyPrimary, .applixySecondary],
                         startPoint: .leading,
@@ -638,32 +1062,468 @@ struct InterestTag: View {
 
 // MARK: - Main Tab View
 struct MainTabView: View {
+    @State private var selectedTab = 0
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
+    
     var body: some View {
-        TabView {
-            DiscoveryView()
-                .tabItem {
-                    Image(systemName: "house.fill")
-                    Text("Discovery")
+        ZStack {
+            // Main content
+            Group {
+                switch selectedTab {
+                case 0:
+                    DiscoveryView(savedOpportunitiesManager: savedOpportunitiesManager)
+                case 1:
+                    SavedView(savedOpportunitiesManager: savedOpportunitiesManager)
+                case 2:
+                    MentorsView()
+                case 3:
+                    UpdatesView()
+                case 4:
+                    ResourcesView()
+                default:
+                    DiscoveryView(savedOpportunitiesManager: savedOpportunitiesManager)
                 }
+            }
             
-            MentorsView()
-                .tabItem {
-                    Image(systemName: "person.2.fill")
-                    Text("Mentors")
-                }
-            
-            ResourcesView()
-                .tabItem {
-                    Image(systemName: "link")
-                    Text("Resources")
-                }
+            // Custom Tab Bar
+            VStack {
+                Spacer()
+                
+                CustomTabBar(selectedTab: $selectedTab)
+            }
         }
-        .accentColor(.applixyPrimary)
+    }
+}
+
+// MARK: - Custom Tab Bar
+struct CustomTabBar: View {
+    @Binding var selectedTab: Int
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            // Discover (Home) - Active state
+            TabBarButton(
+                icon: "house.fill",
+                isSelected: selectedTab == 0,
+                action: { selectedTab = 0 }
+            )
+            
+            // Saved (Star)
+            TabBarButton(
+                icon: "star.fill",
+                isSelected: selectedTab == 1,
+                action: { selectedTab = 1 }
+            )
+            
+            // Mentors (People)
+            TabBarButton(
+                icon: "person.2.fill",
+                isSelected: selectedTab == 2,
+                action: { selectedTab = 2 }
+            )
+            
+            // Updates (Calendar)
+            TabBarButton(
+                icon: "calendar",
+                isSelected: selectedTab == 3,
+                action: { selectedTab = 3 }
+            )
+            
+            // Resources (Compass)
+            TabBarButton(
+                icon: "location.north.fill",
+                isSelected: selectedTab == 4,
+                action: { selectedTab = 4 }
+            )
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 25)
+                .fill(Color.applixyWhite)
+                .shadow(color: .applixyPrimary.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 20)
+    }
+}
+
+// MARK: - Tab Bar Button
+struct TabBarButton: View {
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isSelected {
+                    Circle()
+                        .fill(Color.applixyPrimary)
+                        .frame(width: 50, height: 50)
+                }
+                
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(isSelected ? .applixyWhite : .applixySecondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
+    }
+}
+
+// MARK: - Saved View
+struct SavedView: View {
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
+    
+    var body: some View {
+            ZStack {
+                Color.applixyBackground
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                // Standard Header
+                StandardHeaderView(
+                    title: "Saved",
+                    subtitle: " "
+                )
+                
+                // Content
+                if savedOpportunitiesManager.savedOpportunities.isEmpty {
+                    VStack(spacing: 30) {
+                        Image(systemName: "star.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.applixyLight)
+                        
+                        Text("No Saved Opportunities")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.applixyDark)
+                        
+                        
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(savedOpportunitiesManager.savedOpportunities) { opportunity in
+                                SavedOpportunityCard(opportunity: opportunity, savedOpportunitiesManager: savedOpportunitiesManager)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 20)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Saved Opportunity Card
+struct SavedOpportunityCard: View {
+    let opportunity: OpportunityData
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
+    @State private var showingDetail = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with title and remove button
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(opportunity.title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.applixyDark)
+                        .lineLimit(2)
+                    
+                    Text(opportunity.type)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.applixyPrimary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    savedOpportunitiesManager.removeOpportunity(opportunity)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.applixySecondary)
+                }
+            }
+            
+            // Description
+            Text(opportunity.details)
+                .font(.system(size: 14))
+                .foregroundColor(.applixySecondary)
+                .lineLimit(3)
+            
+            // Deadline and link
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 12))
+                    Text("Due \(opportunity.deadline, formatter: dateFormatter)")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(.applixySecondary)
+                
+                Spacer()
+                
+                if !opportunity.link.isEmpty {
+                    Button("View Details") {
+                        showingDetail = true
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.applixyPrimary)
+                }
+            }
+        }
+        .padding()
+        .background(Color.applixyWhite)
+        .cornerRadius(12)
+        .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+        .sheet(isPresented: $showingDetail) {
+            OpportunityDetailView(opportunity: opportunity)
+        }
+    }
+    
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
+    }
+}
+
+// MARK: - Updates View
+struct UpdatesView: View {
+    @State private var scholarshipUpdates: [ScholarshipUpdate] = []
+    
+    var body: some View {
+        ZStack {
+            Color.applixyBackground
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Standard Header
+                StandardHeaderView(
+                    title: "Updates",
+                    subtitle: " "
+                )
+                
+                // Content
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        ForEach(scholarshipUpdates) { update in
+                            ScholarshipUpdateCard(update: update)
+                }
+            }
+            .padding(.horizontal)
+                    .padding(.top, 20)
+                }
+            }
+        }
+        .onAppear {
+            loadScholarshipUpdates()
+        }
+    }
+    
+    private func loadScholarshipUpdates() {
+        scholarshipUpdates = [
+            ScholarshipUpdate(
+                title: "Jack Kent Scholarship",
+                organization: "JACK KENT COOKE FOUNDATION",
+                description: "Offers up to $55,000 per year for high-achieving students with financial need to attend top universities.",
+                status: "Decision Ready!",
+                statusColor: .green,
+                imageName: "jack-kent-scholarship",
+                isNew: false
+            ),
+            ScholarshipUpdate(
+                title: "Dell Scholarship Program",
+                organization: "DELL SCHOLARSHIP PROGRAM",
+                description: "Support for students who've overcome significant challenges and demonstrate financial need.",
+                status: "Releases Tomorrow!",
+                statusColor: .gray,
+                imageName: "dell-scholarship",
+                isNew: true
+            )
+        ]
+    }
+}
+
+// MARK: - Scholarship Update Data Model
+struct ScholarshipUpdate: Identifiable {
+    let id = UUID().uuidString
+    let title: String
+    let organization: String
+    let description: String
+    let status: String
+    let statusColor: Color
+    let imageName: String
+    let isNew: Bool
+}
+
+// MARK: - Scholarship Update Card
+struct ScholarshipUpdateCard: View {
+    let update: ScholarshipUpdate
+    @State private var showingDetail = false
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Main card content
+            ZStack(alignment: .topLeading) {
+                // Update image background
+                Image("update")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 200)
+                    .clipped()
+                    .cornerRadius(16, corners: [.topLeft, .topRight])
+                
+                // Status tag
+                HStack {
+                    Text(update.status)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(update.statusColor == .green ? .white : .gray)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(update.statusColor == .green ? Color.green : Color.white.opacity(0.8))
+                        )
+                    
+                    Spacer()
+                }
+                .padding(.top, 16)
+                .padding(.horizontal, 16)
+                
+                // Organization name
+                VStack(alignment: .leading, spacing: 4) {
+                    Spacer()
+                    
+                    Text(update.organization)
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                    
+                    Text(update.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                }
+            }
+            
+            // Description section
+            VStack(alignment: .leading, spacing: 12) {
+                Text(update.description)
+                    .font(.system(size: 14))
+                    .foregroundColor(.applixyDark)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                
+                // Action button
+                HStack {
+                    Spacer()
+                    
+                    Button(action: {
+                        showingDetail = true
+                    }) {
+                        HStack(spacing: 8) {
+                            Text("Learn More")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.applixyPrimary)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.applixyPrimary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                }
+            }
+            .background(Color.applixyWhite)
+            .cornerRadius(16, corners: [.bottomLeft, .bottomRight])
+        }
+        .background(Color.applixyWhite)
+        .cornerRadius(16)
+        .shadow(color: .applixyLight, radius: 8, x: 0, y: 4)
+        .sheet(isPresented: $showingDetail) {
+            ScholarshipDetailView(update: update)
+        }
+    }
+}
+
+// MARK: - Scholarship Detail View
+struct ScholarshipDetailView: View {
+    let update: ScholarshipUpdate
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(update.organization)
+                            .font(.caption)
+                            .fontWeight(.bold)
+                        .foregroundColor(.applixySecondary)
+                        
+                        Text(update.title)
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.applixyDark)
+                        
+                        HStack {
+                            Text(update.status)
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(update.statusColor == .green ? .white : .gray)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(update.statusColor == .green ? Color.green : Color.gray.opacity(0.2))
+                                )
+                            
+                            Spacer()
+                        }
+                }
+                .padding(.horizontal)
+                    
+                    // Description
+                    Text(update.description)
+                        .font(.body)
+                        .foregroundColor(.applixyDark)
+                        .padding(.horizontal)
+                    
+                    Spacer()
+        }
+        .padding(.top)
+            }
+            .navigationTitle("Scholarship Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
 // MARK: - Discovery View
 struct DiscoveryView: View {
+    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     @State private var opportunities: [OpportunityData] = []
     @State private var currentIndex = 0
     @State private var dragOffset = CGSize.zero
@@ -671,199 +1531,159 @@ struct DiscoveryView: View {
     @State private var selectedOpportunity: OpportunityData?
     @State private var showingSavedAlert = false
     @State private var showingSkippedAlert = false
+    @State private var swipeDirection: SwipeDirection = .none
+    @State private var listener: ListenerRegistration?
+    @State private var showingAddOpportunity = false
+    
+    
+
     
     var body: some View {
-        NavigationView {
+        
             ZStack {
                 Color.applixyBackground
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header
-                    headerView
+                    
+                    HStack{
+                        // Standard Header
+                        StandardHeaderView(
+                            title: "Discover",
+                            subtitle: " "
+                        )
+                        
+                        Spacer()
+                        
+                        // Button should direct user to another pop up to add opportunities... Then when they click the submit button their opportunity should post (using the postOpportunity function)
+                        Button(action: {
+                            showingAddOpportunity = true
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(colors: [.applixyPrimary, .applixySecondary],
+                                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .frame(width: 54, height: 54)
+                                    .shadow(color: .applixyPrimary.opacity(0.25), radius: 12, x: 0, y: 6)
+                                Image(systemName: "plus")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyWhite)
+                            }
+                        }
+                        .padding(.trailing, 20) // Add padding to match the reference image
+                    }
+                    .padding(.horizontal, 20) // Add horizontal padding to the entire header
+                    
+                    
                     
                     // Card Stack
                     cardStackView
-                    
-                    // Action Buttons
-                    actionButtonsView
                 }
             }
-            //.navigationTitle("Discovery")
             .onAppear {
-                loadSampleOpportunities()
+                loadOpportunities()
             }
             .sheet(isPresented: $showingDetail) {
                 if let opportunity = selectedOpportunity {
                     OpportunityDetailView(opportunity: opportunity)
                 }
             }
-            .alert("Opportunity Saved!", isPresented: $showingSavedAlert) {
-                Button("OK") { }
-            } message: {
-                Text("This opportunity has been added to your saved list.")
+            .sheet(isPresented: $showingAddOpportunity) {
+                AddOpportunityView()
             }
-            .alert("Opportunity Skipped", isPresented: $showingSkippedAlert) {
-                Button("OK") { }
-            } message: {
-                Text("You can always find this opportunity again later.")
-            }
-        }
+        
     }
     
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Discover")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Swipe to explore opportunities")
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-                
-                // Profile/Stats button
-                Button(action: {}) {
-                    Image(systemName: "person.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.applixyPrimary)
-                }
-            }
-            .padding(.horizontal)
-            
-            // Progress indicator
-            if !opportunities.isEmpty {
-                HStack {
-                    Text("\(currentIndex + 1) of \(opportunities.count)")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                    
-                    Spacer()
-                    
-                    Text("New today")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                }
-                .padding(.horizontal)
-            }
-        }
-        .padding(.top)
-    }
     
     // MARK: - Card Stack View
     private var cardStackView: some View {
         VStack(spacing: 0) {
-            // Add margin above the card
             Spacer()
-                .frame(height: 30)
+                .frame(height: 50)
             
-            ZStack {
-                if opportunities.isEmpty {
-                    emptyStateView
-                } else if currentIndex >= opportunities.count {
-                    allCaughtUpView
-                } else {
-                    let currentOpportunity = opportunities[currentIndex]
+            if opportunities.isEmpty {
+                emptyStateView
+            } else if currentIndex >= opportunities.count {
+                allCaughtUpView
+            } else {
+                let currentOpportunity = opportunities[currentIndex]
+                
+                VStack(spacing: 15) {
+                    // Main card - made taller
                     SwipeCardView(
                         opportunity: currentOpportunity,
                         dragOffset: $dragOffset,
+                        swipeDirection: $swipeDirection,
                         onSwipeLeft: {
                             skipOpportunity()
                         },
-                        onSwipeUp: {
-                            selectedOpportunity = currentOpportunity
-                            showingDetail = true
+                        onSwipeRight: {
+                            saveOpportunity(currentOpportunity)
                         },
-                        onSave: {
+                        onHeartTap: {
                             saveOpportunity(currentOpportunity)
                         }
                     )
                     .gesture(
                         DragGesture()
                             .onChanged { value in
+                                print("Drag changed: \(value.translation.width)")
                                 dragOffset = value.translation
+                                updateSwipeDirection(value: value)
                             }
                             .onEnded { value in
+                                print("Drag ended: \(value.translation.width)")
                                 handleSwipeGesture(value: value, opportunity: currentOpportunity)
                             }
                     )
+                    
+                    // Action buttons below the card
+                    HStack(spacing: 40) {
+                        // X button (left)
+                        Button(action: {
+                            skipOpportunity()
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.applixyWhite)
+                                    .frame(width: 70, height: 70)
+                                    .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
+                                
+                                Image(systemName: "xmark")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        
+                        // Star button (right)
+                        Button(action: {
+                            saveOpportunity(currentOpportunity)
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.applixyWhite)
+                                    .frame(width: 70, height: 70)
+                                    .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
+                                
+                                Image(systemName: "star.fill")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyPrimary)
+                            }
+                        }
+                    }
                 }
             }
-            .frame(height: 500)
+            
+            Spacer()
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 40)
     }
     
-    // MARK: - Action Buttons
-    private var actionButtonsView: some View {
-        VStack(spacing: 0) {
-            // Add margin between card and buttons
-            Spacer()
-                .frame(height: 30)
-            
-            HStack(spacing: 40) {
-                // Skip Button
-                Button(action: {
-                    if currentIndex < opportunities.count {
-                        skipOpportunity()
-                    }
-                }) {
-                        Image(systemName: "xmark")
-                            .font(.title2)
-                            .foregroundColor(.red)
-                            .frame(width: 60, height: 60)
-                            .background(Color.red.opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    .disabled(currentIndex >= opportunities.count)
-                
-                // Info Button
-                Button(action: {
-                    if currentIndex < opportunities.count {
-                        selectedOpportunity = opportunities[currentIndex]
-                        showingDetail = true
-                    }
-                }) {
-                    Image(systemName: "info.circle")
-                        .font(.title2)
-                        .foregroundColor(.applixySecondary)
-                        .frame(width: 60, height: 60)
-                        .background(Color.applixyLight)
-                        .clipShape(Circle())
-                }
-                .disabled(currentIndex >= opportunities.count)
-                
-                // Save Button
-                Button(action: {
-                    if currentIndex < opportunities.count {
-                        saveOpportunity(opportunities[currentIndex])
-                    }
-                }) {
-                    Image(systemName: "heart.fill")
-                        .font(.title2)
-                        .foregroundColor(.applixyWhite)
-                        .frame(width: 60, height: 60)
-                        .background(
-                            LinearGradient(
-                                colors: [.applixyPrimary, .applixySecondary],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .clipShape(Circle())
-                        .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
-                }
-                .disabled(currentIndex >= opportunities.count)
-            }
-        }
-        .padding(.bottom, 50)
-    }
     
     // MARK: - Empty State
     private var emptyStateView: some View {
@@ -918,127 +1738,222 @@ struct DiscoveryView: View {
     }
     
     // MARK: - Helper Functions
-    private func loadSampleOpportunities() {
+    
+    private func loadOpportunities() {
+        // If already signed in, attach the listener immediately
+        if Auth.auth().currentUser != nil {
+            attachScholarshipListener()
+            return
+        }
+
+        // Otherwise sign in anonymously, then attach
+        Auth.auth().signInAnonymously { _, error in
+            if let error = error {
+                print("🔥 Anonymous sign-in failed: \(error.localizedDescription)")
+                return
+            }
+            print("✅ Anonymous sign-in OK")
+            attachScholarshipListener()
+        }
+    }
+
+    // Split out the actual listener so we can call it from both paths
+    private func attachScholarshipListener() {
+        // Start live updates from your scholarship collection
+        listener = startScholarshipListener { posts in
+            print("📥 posts from listener: \(posts.count)")
+            let mapped: [OpportunityData] = posts.map { p in
+                OpportunityData(
+                    id: p.id,
+                    title: p.name,
+                    type: "Scholarship",
+                    deadline: parseDeadline(p.applicationDeadline),
+                    awardAmount: formatAward(p.awardAmount),
+                    eligibility: p.organization.isEmpty ? "See details" : p.organization,
+                    details: p.description,
+                    link: p.website ?? "",
+                    tags: []
+                )
+            }
+            DispatchQueue.main.async {
+                self.opportunities = mapped
+                self.currentIndex = 0
+                print("✅ opportunities set: \(self.opportunities.count)")
+            }
+        }
+    }
+    
+    // MARK: - Helpers
+    private func parseDeadline(_ raw: String?) -> Date {
+        guard let raw = raw, !raw.isEmpty else { return Date() }
+        let fmts = ["yyyy-MM-dd", "MM/dd/yyyy", "MMMM d, yyyy", "MMMM d"]
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        for f in fmts {
+            df.dateFormat = f
+            if let d = df.date(from: raw) {
+                if f == "MMMM d" {
+                    let y = Calendar.current.component(.year, from: Date())
+                    return Calendar.current.date(bySetting: .year, value: y, of: d) ?? d
+                }
+                return d
+            }
+        }
+        // Fallback: now (so UI still renders)
+        return Date()
+    }
+
+    private func formatAward(_ amount: Int?) -> String {
+        guard let amount = amount, amount > 0 else { return "" }
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+
+
+    /*
+    private func loadOpportunities() {
+        // Start live updates from your scholarship collection
+        listener = startScholarshipListener { posts in
+            // Map ScholarshipPost -> OpportunityData
+            let mapped: [OpportunityData] = posts.map { p in
+                OpportunityData(
+                    id: p.id,
+                    title: p.name,
+                    type: "Scholarship",
+                    deadline: parseDeadline(p.applicationDeadline),
+                    awardAmount: formatAward(p.awardAmount),
+                    eligibility: p.organization.isEmpty ? "See details" : p.organization,
+                    details: p.description,
+                    link: p.website ?? "",
+                    tags: [] // add if you later store tags in Firestore
+                )
+            }
+            DispatchQueue.main.async {
+                self.opportunities = mapped
+                self.currentIndex = 0
+            }
+        }
+    }
+
+    // If you want to stop listening (e.g., onDisappear)
+    private func stopListening() {
+        listener?.remove()
+        listener = nil
+    }
+
+    // Helpers
+    private func parseDeadline(_ raw: String?) -> Date {
+        guard let raw = raw, !raw.isEmpty else { return Date() }
+        // Try several common formats (adjust to your data)
+        let fmts = ["yyyy-MM-dd", "MM/dd/yyyy", "MMMM d, yyyy", "MMMM d"] // e.g., "November 13"
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        for f in fmts {
+            df.dateFormat = f
+            if let d = df.date(from: raw) {
+                // If no year (e.g., "November 13"), assume current year
+                if f == "MMMM d" {
+                    let y = Calendar.current.component(.year, from: Date())
+                    return Calendar.current.date(bySetting: .year, value: y, of: d) ?? d
+                }
+                return d
+            }
+        }
+        return Date()
+    }
+
+    private func formatAward(_ amount: Int?) -> String {
+        guard let amount = amount, amount > 0 else { return "" }
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
+    }
+    
+    */
+/*
+    
+    private func loadOpportunities() {
         let today = Date()
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         
-        opportunities = [
-            OpportunityData(
-                id: "1",
-                title: "Gates Millennium Scholars Program",
-                type: "Scholarship",
-                deadline: formatter.date(from: "2024-12-15") ?? today,
-                awardAmount: "Full tuition + expenses",
-                eligibility: "High school seniors, minimum 3.3 GPA, leadership potential",
-                details: "The Gates Millennium Scholars Program provides outstanding minority students with an opportunity to complete an undergraduate college education in any discipline they choose.",
-                link: "https://www.gmsp.org",
-                tags: ["STEM", "Leadership", "Minority Programs"]
-            ),
-            OpportunityData(
-                id: "2",
-                title: "MIT Summer Research Program",
-                type: "Program",
-                deadline: formatter.date(from: "2024-12-30") ?? today,
-                awardAmount: "$5,000 stipend",
-                eligibility: "Undergraduate students, STEM majors, minimum 3.0 GPA",
-                details: "10-week summer research program at MIT for underrepresented students in STEM fields.",
-                link: "https://web.mit.edu/srp",
-                tags: ["STEM", "Research", "Women in Tech"]
-            ),
-            OpportunityData(
-                id: "3",
-                title: "Stanford University",
-                type: "College",
-                deadline: formatter.date(from: "2024-11-30") ?? today,
-                awardAmount: "Need-based financial aid",
-                eligibility: "High school seniors, strong academic record",
-                details: "World-renowned private research university with comprehensive financial aid program.",
-                link: "https://admission.stanford.edu",
-                tags: ["STEM", "Arts", "Leadership"]
-            ),
-            OpportunityData(
-                id: "4",
-                title: "Coca-Cola Scholars Foundation",
-                type: "Scholarship",
-                deadline: formatter.date(from: "2025-01-15") ?? today,
-                awardAmount: "$20,000",
-                eligibility: "High school seniors, minimum 3.0 GPA, leadership and service",
-                details: "Merit-based scholarship program recognizing students who demonstrate leadership and service.",
-                link: "https://www.coca-colascholarsfoundation.org",
-                tags: ["Leadership", "Community Service"]
-            ),
-            OpportunityData(
-                id: "5",
-                title: "Google Summer of Code",
-                type: "Program",
-                deadline: formatter.date(from: "2025-02-15") ?? today,
-                awardAmount: "$3,000 stipend",
-                eligibility: "University students, programming experience",
-                details: "Global program that brings new contributors into open source software development.",
-                link: "https://summerofcode.withgoogle.com",
-                tags: ["STEM", "Women in Tech", "Programming"]
-            ),
-            OpportunityData(
-                id: "6",
-                title: "Harvard University",
-                type: "College",
-                deadline: formatter.date(from: "2024-12-01") ?? today,
-                awardAmount: "Need-based financial aid",
-                eligibility: "High school seniors, exceptional academic achievement",
-                details: "Ivy League institution with generous financial aid for families earning less than $65,000.",
-                link: "https://college.harvard.edu",
-                tags: ["STEM", "Arts", "Leadership"]
-            ),
-            OpportunityData(
-                id: "7",
-                title: "Women in Technology Scholarship",
-                type: "Scholarship",
-                deadline: formatter.date(from: "2025-01-30") ?? today,
-                awardAmount: "$5,000",
-                eligibility: "Female students, STEM majors, minimum 3.0 GPA",
-                details: "Scholarship supporting women pursuing degrees in technology and engineering.",
-                link: "https://www.womenintechnology.org",
-                tags: ["STEM", "Women in Tech"]
-            ),
-            OpportunityData(
-                id: "8",
-                title: "NASA Internship Program",
-                type: "Program",
-                deadline: formatter.date(from: "2025-03-15") ?? today,
-                awardAmount: "$6,000 stipend",
-                eligibility: "Undergraduate/graduate students, STEM majors",
-                details: "Hands-on research experience at NASA centers across the country.",
-                link: "https://intern.nasa.gov",
-                tags: ["STEM", "Research", "Women in Tech"]
-            )
-        ]
+        //var listener: ListenerRegistration?
+
+        // Start listening
+        listener = startScholarshipListener { posts in
+            let mapped: [OpportunityData] = posts.map { p in
+                OpportunityData(
+                    id: p.id,
+                       title: p.name,
+                       type: "Scholarship",
+                       deadline: parseDeadline(p.applicationDeadline),
+                       awardAmount: formatAward(p.awardAmount),
+                       eligibility: p.organization.isEmpty ? "See details" : p.organization,
+                       details: p.description,
+                       link: p.website ?? "",
+                       tags: []
+                )
+                
+            }
+            DispatchedQueue.main.async {
+                self.opportunities = mapped
+                self.currentIndex = 0
+            }
+            
+            print("Live update: \(posts.count) scholarships found")
+        }
+        
+    
+         
+        print("Loaded \(opportunities.count) opportunities")
+        currentIndex = 0
+    }
+    */
+    
+    private func updateSwipeDirection(value: DragGesture.Value) {
+        let threshold: CGFloat = 50
+        
+        if abs(value.translation.width) > threshold {
+            if value.translation.width > 0 {
+                swipeDirection = .right
+            } else {
+                swipeDirection = .left
+            }
+        } else {
+            swipeDirection = .none
+        }
     }
     
     private func handleSwipeGesture(value: DragGesture.Value, opportunity: OpportunityData) {
         let threshold: CGFloat = 100
+        print("Swipe gesture ended - translation: \(value.translation.width), threshold: \(threshold)")
         
-        /*withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            if abs(value.translation.x) > threshold {
-                if value.translation.x > 0 {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            if abs(value.translation.width) > threshold {
+                if value.translation.width > 0 {
                     // Swipe right - save
+                    print("Swipe right detected - saving opportunity")
                     saveOpportunity(opportunity)
                 } else {
                     // Swipe left - skip
+                    print("Swipe left detected - skipping opportunity")
                     skipOpportunity()
                 }
-            } else if value.translation.y < -threshold {
-                // Swipe up - show details
-                selectedOpportunity = opportunity
-                showingDetail = true
-            }
-            
+            } else {
+                // Return to original position
+                print("Swipe not far enough - returning to original position")
             dragOffset = .zero
-        }*/
+            }
+            swipeDirection = .none
+        }
     }
     
     private func saveOpportunity(_ opportunity: OpportunityData) {
         print("Saved: \(opportunity.title)")
+        savedOpportunitiesManager.saveOpportunity(opportunity)
         showingSavedAlert = true
         nextOpportunity()
     }
@@ -1050,13 +1965,63 @@ struct DiscoveryView: View {
     }
     
     private func nextOpportunity() {
+        print("Current index: \(currentIndex), Total opportunities: \(opportunities.count)")
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             currentIndex += 1
+            dragOffset = .zero
+            swipeDirection = .none
         }
+        print("New index: \(currentIndex)")
+    }
+}
+
+// MARK: - Standard Header Component
+struct StandardHeaderView: View {
+    let title: String
+    let subtitle: String
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(.applixyDark)
+                    
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.applixySecondary)
+                }
+                
+                Spacer()
+            }
+            .padding(.horizontal)
+        }
+        .padding(.top)
+    }
+}
+
+// MARK: - Shared Data Manager
+class SavedOpportunitiesManager: ObservableObject {
+    @Published var savedOpportunities: [OpportunityData] = []
+    
+    func saveOpportunity(_ opportunity: OpportunityData) {
+        if !savedOpportunities.contains(where: { $0.id == opportunity.id }) {
+            savedOpportunities.append(opportunity)
+        }
+    }
+    
+    func removeOpportunity(_ opportunity: OpportunityData) {
+        savedOpportunities.removeAll { $0.id == opportunity.id }
     }
 }
 
 // MARK: - Data Models
+enum SwipeDirection {
+    case none, left, right, up
+}
+
 struct OpportunityData: Identifiable {
     let id: String
     let title: String
@@ -1073,14 +2038,40 @@ struct OpportunityData: Identifiable {
 struct SwipeCardView: View {
     let opportunity: OpportunityData
     @Binding var dragOffset: CGSize
+    @Binding var swipeDirection: SwipeDirection
     let onSwipeLeft: () -> Void
-    let onSwipeUp: () -> Void
-    let onSave: () -> Void
+    let onSwipeRight: () -> Void
+    let onHeartTap: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Header
-            HStack {
+        ZStack {
+            // Main Card
+            VStack(spacing: 0) {
+                // Image placeholder with deadline tag
+                ZStack(alignment: .topLeading) {
+                    // Opportunity image
+                    Image("opportunity")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 200)
+                        .clipped()
+                    
+                    // Deadline tag
+                    Text("DUE: \(opportunity.deadline, formatter: dateFormatter)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.applixyWhite)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.applixyDark.opacity(0.8))
+                        .cornerRadius(12)
+                        .padding(.top, 16)
+                        .padding(.leading, 16)
+                }
+                
+                // Card content
+                VStack(alignment: .leading, spacing: 12) {
+                    // Title and type
                 VStack(alignment: .leading, spacing: 8) {
                     Text(opportunity.title)
                         .font(.title2)
@@ -1094,20 +2085,11 @@ struct SwipeCardView: View {
                         Text(opportunity.type)
                             .font(.subheadline)
                             .foregroundColor(.applixySecondary)
-                    }
-                }
-                
-                Spacer()
-                
-                Button(action: onSave) {
-                    Image(systemName: "heart")
-                        .font(.title2)
-                        .foregroundColor(.applixyPrimary)
                 }
             }
             
             // Deadline and Award
-            VStack(spacing: 12) {
+                    VStack(spacing: 6) {
                 HStack {
                     Image(systemName: "calendar")
                         .foregroundColor(.red)
@@ -1125,11 +2107,11 @@ struct SwipeCardView: View {
                 }
             }
             
-            // Eligibility
-            Text(opportunity.eligibility)
+                    // Description
+                    Text(opportunity.details.isEmpty ? opportunity.eligibility : opportunity.details)
                 .font(.body)
                 .foregroundColor(.applixyDark)
-                .lineLimit(3)
+                        .lineLimit(2)
             
             // Tags
             if !opportunity.tags.isEmpty {
@@ -1148,39 +2130,9 @@ struct SwipeCardView: View {
                     .padding(.horizontal, 1)
                 }
             }
-            
-            Spacer()
-            
-            // Action Buttons
-            HStack {
-                Button("Skip") {
-                    onSwipeLeft()
                 }
-                .foregroundColor(.red)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(20)
-                
-                Spacer()
-                
-                Button("More Info") {
-                    onSwipeUp()
-                }
-                .foregroundColor(.applixyWhite)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(
-                    LinearGradient(
-                        colors: [.applixyPrimary, .applixySecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(20)
+                .padding(16)
             }
-        }
-        .padding(24)
         .background(Color.applixyWhite)
         .cornerRadius(20)
         .shadow(
@@ -1189,8 +2141,47 @@ struct SwipeCardView: View {
             x: 0,
             y: 10
         )
+            
+            // Swipe feedback overlays
+            if swipeDirection != .none {
+                ZStack {
+                    if swipeDirection == .left {
+                        // Red overlay for left swipe (X)
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.red.opacity(0.2))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 60, weight: .bold))
+                                        .foregroundColor(.red)
+                                    /*Text("SKIP")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.red)*/
+                                }
+                            )
+                    } else if swipeDirection == .right {
+                        // Green overlay for right swipe (Star)
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.green.opacity(0.2))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 60, weight: .bold))
+                                        .foregroundColor(.green)
+                                    /*Text("SAVE")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.green)*/
+                                }
+                            )
+                    }
+                }
+            }
+        }
         .offset(x: dragOffset.width, y: dragOffset.height)
         .rotationEffect(.degrees(dragOffset.width / 20))
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: dragOffset)
     }
     
     private var typeIcon: String {
@@ -1311,7 +2302,7 @@ struct OpportunityDetailView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
+                    /*Button("Save") {
                         // Save action
                         dismiss()
                     }
@@ -1319,7 +2310,7 @@ struct OpportunityDetailView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(Color.applixyPrimary)
-                    .cornerRadius(20)
+                    .cornerRadius(20)*/
                 }
             }
         }
@@ -1377,145 +2368,161 @@ struct InfoRow: View {
 // MARK: - Mentors View
 struct MentorsView: View {
     @State private var mentors: [MentorProfile] = []
-    @State private var showingBookingConfirmation = false
-    @State private var selectedMentor: MentorProfile?
-    
+    @State private var showingAddMentor = false
+    @State private var listener: ListenerRegistration? = nil
+    @State private var loading = false
+    @State private var loadError: String?
+
     var body: some View {
         NavigationView {
             ZStack {
-                Color.applixyBackground
-                    .ignoresSafeArea()
-                
+                Color.applixyBackground.ignoresSafeArea()
+
                 VStack(spacing: 0) {
                     // Header
-                    headerView
-                    
+                    HStack {
+                        StandardHeaderView(title: "Mentors", subtitle: " ")
+                        Spacer()
+                        Button(action: { showingAddMentor = true }) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.applixyPrimary, .applixySecondary],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 54, height: 54)
+                                    .shadow(color: .applixyPrimary.opacity(0.25), radius: 12, x: 0, y: 6)
+                                Image(systemName: "plus")
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.applixyWhite)
+                            }
+                        }
+                        .padding(.trailing, 20)
+                    }
+                    .padding(.horizontal, 20)
+
                     // Content
-                    if mentors.isEmpty {
-                        emptyStateView
-                    } else {
-                        ScrollView {
-                            LazyVStack(spacing: 16) {
-                                ForEach(mentors) { mentor in
-                                    MentorCard(mentor: mentor) {
-                                        selectedMentor = mentor
-                                        showingBookingConfirmation = true
+                    Group {
+                        if loading {
+                            VStack(spacing: 12) {
+                                ProgressView()
+                                Text("Loading mentors…")
+                                    .foregroundColor(.applixySecondary)
+                                    .font(.subheadline)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if let err = loadError {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.orange)
+                                Text("Couldn’t load mentors")
+                                    .font(.title3).fontWeight(.semibold)
+                                    .foregroundColor(.applixyDark)
+                                Text(err)
+                                    .font(.footnote)
+                                    .foregroundColor(.applixySecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 24)
+                                Button("Retry") { restartListener() }
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color.applixyPrimary.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if mentors.isEmpty {
+                            emptyStateView
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ScrollView {
+                                LazyVGrid(
+                                    columns: [
+                                        GridItem(.flexible(), spacing: 16),
+                                        GridItem(.flexible(), spacing: 16)
+                                    ],
+                                    spacing: 16
+                                ) {
+                                    ForEach(mentors) { mentor in
+                                        MentorGridCard(mentor: mentor) {
+                                            // Handle tap (e.g., push a detail view)
+                                            print("Mentor tapped: \(mentor.name)")
+                                        }
                                     }
                                 }
+                                .padding()
                             }
-                            .padding()
                         }
                     }
                 }
             }
-           // .navigationTitle("Mentors")
-            .onAppear {
-                loadMentors()
-            }
-            .alert("Mock Meeting Booked!", isPresented: $showingBookingConfirmation) {
-                Button("OK") { }
-            } message: {
-                if let mentor = selectedMentor {
-                    Text("You've booked a mock meeting with \(mentor.name). We'll send you a confirmation email shortly!")
-                }
+            .onAppear { restartListener() }
+            .onDisappear { stopListener() }
+            .sheet(isPresented: $showingAddMentor) {
+                // When AddMentorView succeeds, the live listener will auto-refresh this grid.
+                AddMentorView(onSuccess: {
+                    // No manual reload needed since snapshot listener is live,
+                    // but you can still haptically nudge or log.
+                })
             }
         }
     }
-    
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Mentors")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Connect with experienced mentors")
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-            }
-            .padding(.horizontal)
-        }
-        .padding(.top)
-    }
-    
+
     // MARK: - Empty State
     private var emptyStateView: some View {
         VStack(spacing: 30) {
             Image(systemName: "person.2.circle.fill")
                 .font(.system(size: 80))
                 .foregroundColor(.applixyLight)
-            
             Text("No mentors available")
-                .font(.title2)
-                .fontWeight(.semibold)
+                .font(.title2).fontWeight(.semibold)
                 .foregroundColor(.applixyDark)
-            
             Text("Check back later for mentor profiles")
                 .foregroundColor(.applixySecondary)
                 .multilineTextAlignment(.center)
         }
         .padding()
     }
-    
-    private func loadMentors() {
-        mentors = [
-            MentorProfile(
-                id: "1",
-                name: "Dr. Sarah Chen",
-                specialty: "STEM Applications",
-                experience: "10+ years",
-                contactInfo: "sarah.chen@example.com",
-                bio: "Former MIT admissions officer with 10+ years experience helping students with STEM applications. Specializes in engineering and computer science programs.",
-                rating: 4.9,
-                sessionsCompleted: 150
-            ),
-            MentorProfile(
-                id: "2",
-                name: "Marcus Johnson",
-                specialty: "Scholarship Strategy",
-                experience: "8+ years",
-                contactInfo: "marcus.j@example.com",
-                bio: "Scholarship expert who has helped students secure over $2M in funding. Focuses on merit-based and need-based scholarships.",
-                rating: 4.8,
-                sessionsCompleted: 200
-            ),
-            MentorProfile(
-                id: "3",
-                name: "Dr. Elena Rodriguez",
-                specialty: "First-Gen Support",
-                experience: "12+ years",
-                contactInfo: "elena.rodriguez@example.com",
-                bio: "First-generation college graduate and admissions counselor specializing in supporting FGLI students through the application process.",
-                rating: 4.9,
-                sessionsCompleted: 180
-            ),
-            MentorProfile(
-                id: "4",
-                name: "James Park",
-                specialty: "Ivy League Prep",
-                experience: "15+ years",
-                contactInfo: "james.park@example.com",
-                bio: "Harvard graduate and former admissions reader with expertise in competitive college applications and essay writing.",
-                rating: 4.7,
-                sessionsCompleted: 300
-            ),
-            MentorProfile(
-                id: "5",
-                name: "Dr. Aisha Williams",
-                specialty: "Minority Programs",
-                experience: "9+ years",
-                contactInfo: "aisha.williams@example.com",
-                bio: "Diversity and inclusion expert with deep knowledge of minority-focused scholarships and programs. Passionate about equity in education.",
-                rating: 4.8,
-                sessionsCompleted: 120
-            )
-        ]
+
+    // MARK: - Firestore
+    private func restartListener() {
+        stopListener()
+        startListener()
+    }
+
+    private func startListener() {
+        loading = true
+        loadError = nil
+
+        let db = Firestore.firestore()
+        // Sort newest first; adjust field name if you use "createdAt" instead of "timestamp"
+        listener = db.collection("mentors")
+            .order(by: "timestamp", descending: true)
+            .addSnapshotListener { snapshot, error in
+                loading = false
+
+                if let error = error {
+                    loadError = error.localizedDescription
+                    mentors = []
+                    return
+                }
+
+                guard let docs = snapshot?.documents else {
+                    mentors = []
+                    return
+                }
+
+                mentors = docs.compactMap { MentorProfile(doc: $0) }
+            }
+    }
+
+    private func stopListener() {
+        listener?.remove()
+        listener = nil
     }
 }
 
@@ -1523,80 +2530,159 @@ struct MentorProfile: Identifiable {
     let id: String
     let name: String
     let specialty: String
-    let experience: String
-    let contactInfo: String
     let bio: String
-    let rating: Double
-    let sessionsCompleted: Int
+    let email: String
+    let phone: String
+    let website: String
+
+    // Optional image overrides from Firestore
+    let imageURL: String?
+    let imageName: String?
+
+    // ✅ Add these so MentorCard compiles
+    let rating: Double?
+    let sessionsCompleted: Int?
+    let experience: String?
+    let contactInfo: String?
+
+    init?(doc: QueryDocumentSnapshot) {
+        let d = doc.data()
+        self.id = doc.documentID
+        self.name = d["name"] as? String ?? ""
+        self.specialty = d["specialty"] as? String ?? ""
+        self.bio = d["description"] as? String ?? ""
+        self.email = d["email"] as? String ?? ""
+        self.phone = d["phone"] as? String ?? ""
+        self.website = d["website"] as? String ?? ""
+        self.imageURL = d["imageURL"] as? String
+        self.imageName = d["imageName"] as? String
+
+        // ✅ Safely read optional fields (provide sensible defaults if missing)
+        self.rating = d["rating"] as? Double
+        self.sessionsCompleted = d["sessionsCompleted"] as? Int
+        self.experience = d["experience"] as? String
+        // Prefer explicit contactInfo; fall back to email if not present
+        if let ci = d["contactInfo"] as? String, !ci.isEmpty {
+            self.contactInfo = ci
+        } else if let em = d["email"] as? String, !em.isEmpty {
+            self.contactInfo = em
+        } else {
+            self.contactInfo = nil
+        }
+    }
 }
+
 
 struct MentorCard: View {
     let mentor: MentorProfile
     let onBookMeeting: () -> Void
-    
+
+    // Map specialty → asset name (same mapping style as MentorGridCard)
+    private static let specialtyImage: [String: String] = [
+        "technology": "mentor_tech",
+        "engineering": "mentor_engineering",
+        "design": "mentor_design",
+        "business": "mentor_business",
+        "marketing": "mentor_marketing",
+        "finance": "mentor_finance",
+        "healthcare": "mentor_health",
+        "education": "mentor_education",
+        "law": "mentor_law",
+        "science": "mentor_science",
+        "arts": "mentor_arts",
+        "other": "mentor"
+    ]
+
+    private var resolvedAssetName: String {
+        if let explicit = mentor.imageName, !explicit.isEmpty {
+            return explicit
+        }
+        let key = mentor.specialty.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return Self.specialtyImage[key] ?? "mentor" // fallback
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(mentor.name)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text(mentor.specialty)
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
-                            .font(.caption)
-                        Text(String(format: "%.1f", mentor.rating))
-                            .font(.caption)
-                            .foregroundColor(.applixyDark)
+        VStack(spacing: 16) {
+            // Top image (remote URL if provided, else local asset by specialty)
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if let urlStr = mentor.imageURL, let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable().scaledToFill()
+                            case .failure(_):
+                                Image(resolvedAssetName).resizable().scaledToFill()
+                            case .empty:
+                                Color.gray.opacity(0.15)
+                            @unknown default:
+                                Image(resolvedAssetName).resizable().scaledToFill()
+                            }
+                        }
+                    } else {
+                        Image(resolvedAssetName)
+                            .resizable()
+                            .scaledToFill()
                     }
-                    
-                    Text("\(mentor.sessionsCompleted) sessions")
-                        .font(.caption2)
-                        .foregroundColor(.applixySecondary)
                 }
+                .frame(height: 160)
+                .clipped()
+                .cornerRadius(12)
+
+                // Subtle star (favorite) icon
+                Image(systemName: "star.fill")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(8)
+                    .background(Color.black.opacity(0.25))
+                    .clipShape(Circle())
+                    .padding(8)
             }
-            
+
+            // Title + specialty
+            VStack(alignment: .leading, spacing: 6) {
+                Text(mentor.name)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(.applixyDark)
+
+                Text(mentor.specialty)
+                    .font(.subheadline)
+                    .foregroundColor(.applixySecondary)
+            }
+
             // Bio
-            Text(mentor.bio)
-                .font(.body)
-                .foregroundColor(.applixyDark)
-                .lineLimit(3)
-            
-            // Experience and Contact
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Experience")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                    Text(mentor.experience)
-                        .font(.subheadline)
-                        .foregroundColor(.applixyDark)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Contact")
-                        .font(.caption)
-                        .foregroundColor(.applixySecondary)
-                    Text(mentor.contactInfo)
-                        .font(.caption)
-                        .foregroundColor(.applixyPrimary)
-                }
+            if !mentor.bio.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(mentor.bio)
+                    .font(.body)
+                    .foregroundColor(.applixyDark)
+                    .lineLimit(4)
             }
-            
-            // Book Meeting Button
+
+            // Contact chips (email / phone / website if present)
+            HStack(spacing: 8) {
+                if !mentor.email.isEmpty {
+                    contactChip(
+                        system: "envelope.fill",
+                        text: mentor.email
+                    )
+                }
+                if !mentor.phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    contactChip(
+                        system: "phone.fill",
+                        text: mentor.phone
+                    )
+                }
+                if !mentor.website.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    contactChip(
+                        system: "globe",
+                        text: urlDisplay(mentor.website)
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+
+            // Book Meeting button
             Button(action: onBookMeeting) {
                 HStack {
                     Image(systemName: "calendar.badge.plus")
@@ -1607,19 +2693,164 @@ struct MentorCard: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
                 .background(
-                    LinearGradient(
-                        colors: [.applixyPrimary, .applixySecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                    LinearGradient(colors: [.applixyPrimary, .applixySecondary],
+                                   startPoint: .leading, endPoint: .trailing)
                 )
-                .cornerRadius(25)
+                .cornerRadius(12)
+                .shadow(color: .applixyPrimary.opacity(0.25), radius: 6, x: 0, y: 3)
             }
         }
-        .padding(20)
+        .padding(16)
         .background(Color.applixyWhite)
         .cornerRadius(16)
         .shadow(color: .applixyLight, radius: 8, x: 0, y: 4)
+    }
+
+    // MARK: - Helpers
+
+    @ViewBuilder
+    private func contactChip(system: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: system)
+            Text(text)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .font(.caption)
+        .foregroundColor(.applixyDark)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.applixyLight.opacity(0.25))
+        .cornerRadius(10)
+    }
+
+    private func urlDisplay(_ url: String) -> String {
+        var s = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("https://") { s.removeFirst("https://".count) }
+        if s.hasPrefix("http://") { s.removeFirst("http://".count) }
+        if s.hasSuffix("/") { s.removeLast() }
+        return s
+    }
+}
+
+
+// MARK: - Mentor Grid Card
+struct MentorGridCard: View {
+    let mentor: MentorProfile
+    let onBookMeeting: () -> Void
+    
+    // Map specialty → asset name (add these assets to your catalog)
+    private static let specialtyImage: [String: String] = [
+        "technology": "mentor_tech",
+        "engineering": "mentor_engineering",
+        "design": "mentor_design",
+        "business": "mentor_business",
+        "marketing": "mentor_marketing",
+        "finance": "mentor_finance",
+        "healthcare": "mentor_health",
+        "education": "mentor_education",
+        "law": "mentor_law",
+        "science": "mentor_science",
+        "arts": "mentor_arts",
+        "other": "mentor"
+    ]
+    
+    private var resolvedAssetName: String {
+        if let explicit = mentor.imageName, !explicit.isEmpty {
+            return explicit
+        }
+        let key = mentor.specialty.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return Self.specialtyImage[key] ?? "mentor" // fallback
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                // If a remote URL exists, load it; else use local asset mapped by specialty
+                if let urlStr = mentor.imageURL, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().scaledToFill()
+                        case .failure(_):
+                            Image(resolvedAssetName).resizable().scaledToFill()
+                        case .empty:
+                            Color.gray.opacity(0.15)
+                        @unknown default:
+                            Image(resolvedAssetName).resizable().scaledToFill()
+                        }
+                    }
+                } else {
+                    Image(resolvedAssetName)
+                        .resizable()
+                        .scaledToFill()
+                }
+                
+                // Star icon
+                VStack {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "star.fill")
+                            .font(.title3)
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(8)
+                    }
+                    Spacer()
+                }
+                
+                // Name + specialty overlay
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(mentor.name)
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            
+                            Text(mentor.specialty)
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.95))
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        LinearGradient(colors: [.clear, .black.opacity(0.75)],
+                                       startPoint: .top, endPoint: .bottom)
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 140, maxHeight: 180)
+            .clipped()
+            .cornerRadius(12, corners: [.topLeft, .topRight])
+        }
+        .background(Color.applixyWhite)
+        .cornerRadius(12)
+        .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+        .onTapGesture { onBookMeeting() }
+    }
+}
+
+// MARK: - Corner Radius Extension
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 
@@ -1634,8 +2865,11 @@ struct ResourcesView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header
-                    headerView
+                    // Standard Header
+                    StandardHeaderView(
+                        title: "Resources",
+                        subtitle: " "
+                    )
                     
                     // Content
                     if resources.isEmpty {
@@ -1659,27 +2893,6 @@ struct ResourcesView: View {
         }
     }
     
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Resources")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.applixyDark)
-                    
-                    Text("Helpful links and tools for your journey")
-                        .font(.subheadline)
-                        .foregroundColor(.applixySecondary)
-                }
-                
-                Spacer()
-            }
-            .padding(.horizontal)
-        }
-        .padding(.top)
-    }
     
     // MARK: - Empty State
     private var emptyStateView: some View {
@@ -1746,7 +2959,8 @@ struct ResourcesView: View {
                 category: "Testing",
                 icon: "graduationcap.fill",
                 isExternal: true
-            ),
+            )
+            /*
             ResourceItem(
                 id: "6",
                 title: "Khan Academy",
@@ -1791,7 +3005,7 @@ struct ResourcesView: View {
                 category: "Scholarships",
                 icon: "play.circle.fill",
                 isExternal: true
-            )
+            )*/
         ]
     }
 }
@@ -1810,39 +3024,57 @@ struct ResourceCard: View {
     let resource: ResourceItem
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                Image(systemName: resource.icon)
-                    .font(.title2)
-                    .foregroundColor(.applixyPrimary)
-                    .frame(width: 30)
+        VStack(spacing: 0) {
+            // Top image section
+            ZStack(alignment: .topLeading) {
+                // Resource image background
+                Image("resource")
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 150)
+                    .clipped()
+                    .cornerRadius(12, corners: [.topLeft, .topRight])
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(resource.title)
-                        .font(.headline)
-                        .foregroundColor(.applixyDark)
-                        .lineLimit(2)
-                    
+                // Category tag
+                HStack {
                     Text(resource.category)
                         .font(.caption)
-                        .foregroundColor(.applixySecondary)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.black.opacity(0.6))
+                        )
+                    
+                    Spacer()
                 }
+                .padding(.top, 12)
+                .padding(.horizontal, 16)
                 
+                // Title overlay
+                VStack(alignment: .leading, spacing: 4) {
                 Spacer()
                 
-                if resource.isExternal {
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.caption)
-                        .foregroundColor(.applixyPrimary)
+                    Text(resource.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 12)
                 }
             }
             
+            // Content section
+            VStack(alignment: .leading, spacing: 12) {
             // Description
             Text(resource.description)
-                .font(.body)
+                    .font(.system(size: 14))
                 .foregroundColor(.applixyDark)
-                .lineLimit(2)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
             
             // Action Button
             Button(action: {
@@ -1871,14 +3103,627 @@ struct ResourceCard: View {
                 )
                 .cornerRadius(20)
             }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
         }
-        .padding(16)
+            .background(Color.applixyWhite)
+            .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
+        }
         .background(Color.applixyWhite)
         .cornerRadius(12)
         .shadow(color: .applixyLight, radius: 6, x: 0, y: 3)
     }
 }
 
+// MARK: - Add Opportunity View
+struct AddOpportunityView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var opportunityName = ""
+    @State private var selectedCategory = "scholarship"
+    @State private var deadline = Date()
+    @State private var awardAmount = ""
+    @State private var description = ""
+    @State private var organization = ""
+    @State private var website = ""
+    @State private var targetDemographics: [String] = []
+    @State private var newDemographic = ""
+    @State private var isSubmitting = false
+    @State private var showingSuccessAlert = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+    
+    private let categories = [
+        ("scholarship", "Scholarship", "dollarsign.circle.fill"),
+        ("mentor", "Mentor", "person.2.fill"),
+        ("resource", "Resource", "book.fill"),
+        ("college", "College", "building.2.fill")
+    ]
+    
+    private let commonDemographics = [
+        "low-income", "high-achievers", "first-generation", 
+        "minority", "women", "STEM", "arts", "athletics"
+    ]
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Text("Add New Opportunity")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.applixyDark)
+                        
+                        Text("Share an opportunity with the community")
+                            .font(.subheadline)
+                            .foregroundColor(.applixySecondary)
+                    }
+                    .padding(.top, 20)
+                    
+                    VStack(spacing: 20) {
+                        // Opportunity Name
+                        FormField(
+                            title: "Opportunity Name",
+                            placeholder: "Enter the name of the opportunity",
+                            text: $opportunityName
+                        )
+                        
+                        // Category Selection
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Category")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                                ForEach(categories, id: \.0) { category in
+                                    CategoryButton(
+                                        title: category.1,
+                                        icon: category.2,
+                                        isSelected: selectedCategory == category.0,
+                                        action: { selectedCategory = category.0 }
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // Deadline
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Deadline")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            DatePicker("Select deadline", selection: $deadline, displayedComponents: .date)
+                                .datePickerStyle(CompactDatePickerStyle())
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.applixyLight.opacity(0.3))
+                                .cornerRadius(8)
+                        }
+                        
+                        // Award Amount
+                        FormField(
+                            title: "Award Amount (Optional)",
+                            placeholder: "e.g., $5,000 or Full Tuition",
+                            text: $awardAmount
+                        )
+                        
+                        // Organization
+                        FormField(
+                            title: "Organization",
+                            placeholder: "Name of the organization or institution",
+                            text: $organization
+                        )
+                        
+                        // Website
+                        FormField(
+                            title: "Website (Optional)",
+                            placeholder: "https://example.com",
+                            text: $website
+                        )
+                        
+                        // Description
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Description")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            TextEditor(text: $description)
+                                .frame(minHeight: 100)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.applixyLight.opacity(0.3))
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.applixyLight, lineWidth: 1)
+                                )
+                        }
+                        
+                        // Target Demographics
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Target Demographics (Optional)")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            // Add new demographic
+                            HStack {
+                                TextField("Add demographic", text: $newDemographic)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                
+                                Button("Add") {
+                                    if !newDemographic.isEmpty {
+                                        targetDemographics.append(newDemographic)
+                                        newDemographic = ""
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(newDemographic.isEmpty)
+                            }
+                            
+                            // Common demographics
+                            if !commonDemographics.isEmpty {
+                                Text("Common options:")
+                                    .font(.caption)
+                                    .foregroundColor(.applixySecondary)
+                                
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                    ForEach(commonDemographics, id: \.self) { demo in
+                                        Button(demo) {
+                                            if !targetDemographics.contains(demo) {
+                                                targetDemographics.append(demo)
+                                            }
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.applixyLight.opacity(0.3))
+                                        .foregroundColor(.applixyDark)
+                                        .cornerRadius(16)
+                                    }
+                                }
+                            }
+                            
+                            // Selected demographics
+                            if !targetDemographics.isEmpty {
+                                Text("Selected:")
+                                    .font(.caption)
+                                    .foregroundColor(.applixySecondary)
+                                
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
+                                    ForEach(targetDemographics, id: \.self) { demo in
+                                        HStack {
+                                            Text(demo)
+                                                .font(.caption)
+                                            Button("×") {
+                                                targetDemographics.removeAll { $0 == demo }
+                                            }
+                                            .font(.caption)
+                                            .foregroundColor(.red)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.applixyPrimary.opacity(0.2))
+                                        .foregroundColor(.applixyDark)
+                                        .cornerRadius(16)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Submit Button
+                    Button(action: submitOpportunity) {
+                        HStack {
+                            if isSubmitting {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title3)
+                            }
+                            
+                            Text(isSubmitting ? "Submitting..." : "Submit Opportunity")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.applixyPrimary, .applixySecondary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                        .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .disabled(isSubmitting || opportunityName.isEmpty || organization.isEmpty)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                }
+            }
+            .background(Color.applixyBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.applixySecondary)
+                }
+            }
+        }
+        .alert("Success!", isPresented: $showingSuccessAlert) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text("Your opportunity has been submitted successfully!")
+        }
+        .alert("Error", isPresented: $showingErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private func submitOpportunity() {
+        guard !opportunityName.isEmpty, !organization.isEmpty else {
+            errorMessage = "Please fill in all required fields."
+            showingErrorAlert = true
+            return
+        }
+        
+        isSubmitting = true
+        
+        // Format deadline
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM d, yyyy"
+        let deadlineString = formatter.string(from: deadline)
+        
+        // Parse award amount
+        let awardAmountInt = Int(awardAmount.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)) ?? 0
+        
+        // Create the opportunity data
+        let opportunityData: [String: Any] = [
+            "active": true,
+            "application_deadline": deadlineString,
+            "award_amount": awardAmountInt,
+            "description": description,
+            "name": opportunityName,
+            "organization": organization,
+            "target_demographic": targetDemographics,
+            "website": website,
+            "timestamp": FieldValue.serverTimestamp()
+        ]
+        
+        // Post to Firestore
+        let db = Firestore.firestore()
+        db.collection(selectedCategory)
+            .addDocument(data: opportunityData) { error in
+                DispatchQueue.main.async {
+                    isSubmitting = false
+                    
+                    if let error = error {
+                        errorMessage = "Failed to submit opportunity: \(error.localizedDescription)"
+                        showingErrorAlert = true
+                    } else {
+                        showingSuccessAlert = true
+                    }
+                }
+            }
+    }
+}
+
+// MARK: - Form Field Component
+struct FormField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.applixyDark)
+            
+            TextField(placeholder, text: $text)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(Color.applixyLight.opacity(0.3))
+                .cornerRadius(8)
+        }
+    }
+}
+
+// MARK: - Category Button Component
+struct CategoryButton: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(isSelected ? .applixyWhite : .applixyPrimary)
+                
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(isSelected ? .applixyWhite : .applixyDark)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                isSelected ? 
+                LinearGradient(colors: [.applixyPrimary, .applixySecondary], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                LinearGradient(colors: [Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.clear : Color.applixyLight, lineWidth: 1)
+            )
+            .cornerRadius(12)
+        }
+    }
+}
+
+// MARK: - Add Mentor View
+struct AddMentorView: View {
+    @Environment(\.dismiss) private var dismiss
+    let onSuccess: (() -> Void)?
+    
+    @State private var mentorName = ""
+    @State private var specialty = ""
+    @State private var experience = ""
+    @State private var contactInfo = ""
+    @State private var bio = ""
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var website = ""
+    @State private var isSubmitting = false
+    @State private var showingSuccessAlert = false
+    @State private var showingErrorAlert = false
+    @State private var errorMessage = ""
+    
+    private let specialties = [
+        "Technology", "Business", "Healthcare", "Education", "Finance", 
+        "Marketing", "Engineering", "Design", "Law", "Science", "Arts", "Other"
+    ]
+    
+    private let experienceLevels = [
+        "1-2 years", "3-5 years", "6-10 years", "11-15 years", "16+ years"
+    ]
+    
+    init(onSuccess: (() -> Void)? = nil) {
+        self.onSuccess = onSuccess
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Text("Add New Mentor")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.applixyDark)
+                        
+                        Text("Share your expertise with the community")
+                            .font(.subheadline)
+                            .foregroundColor(.applixySecondary)
+                    }
+                    .padding(.top, 20)
+                    
+                    VStack(spacing: 20) {
+                        // Mentor Name
+                        FormField(
+                            title: "Full Name",
+                            placeholder: "Enter your full name",
+                            text: $mentorName
+                        )
+                        
+                        // Specialty Selection
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Specialty")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
+                                ForEach(specialties, id: \.self) { spec in
+                                    Button(spec) {
+                                        specialty = spec
+                                    }
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        specialty == spec ? 
+                                        LinearGradient(colors: [.applixyPrimary, .applixySecondary], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                                        LinearGradient(colors: [Color.applixyLight.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .foregroundColor(specialty == spec ? .white : .applixyDark)
+                                    .cornerRadius(16)
+                                }
+                            }
+                        }
+                        
+                        // Experience Level
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Experience Level")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                                ForEach(experienceLevels, id: \.self) { level in
+                                    Button(level) {
+                                        experience = level
+                                    }
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        experience == level ? 
+                                        LinearGradient(colors: [.applixyPrimary, .applixySecondary], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                                        LinearGradient(colors: [Color.applixyLight.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .foregroundColor(experience == level ? .white : .applixyDark)
+                                    .cornerRadius(16)
+                                }
+                            }
+                        }
+                        
+                        // Contact Information
+                        FormField(
+                            title: "Email",
+                            placeholder: "your.email@example.com",
+                            text: $email
+                        )
+                        
+                        FormField(
+                            title: "Phone (Optional)",
+                            placeholder: "(555) 123-4567",
+                            text: $phone
+                        )
+                        
+                        FormField(
+                            title: "Website (Optional)",
+                            placeholder: "https://yourwebsite.com",
+                            text: $website
+                        )
+                        
+                        // Bio
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Bio")
+                                .font(.headline)
+                                .foregroundColor(.applixyDark)
+                            
+                            TextEditor(text: $bio)
+                                .frame(minHeight: 120)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.applixyLight.opacity(0.3))
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.applixyLight, lineWidth: 1)
+                                )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Submit Button
+                    Button(action: submitMentor) {
+                        HStack {
+                            if isSubmitting {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "person.badge.plus")
+                                    .font(.title3)
+                            }
+                            
+                            Text(isSubmitting ? "Submitting..." : "Submit Mentor Profile")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.applixyPrimary, .applixySecondary],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(12)
+                        .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .disabled(isSubmitting || mentorName.isEmpty || specialty.isEmpty || email.isEmpty)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                }
+            }
+            .background(Color.applixyBackground)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.applixySecondary)
+                }
+            }
+        }
+        .alert("Success!", isPresented: $showingSuccessAlert) {
+            Button("OK") {
+                onSuccess?()
+                dismiss()
+            }
+        } message: {
+            Text("Your mentor profile has been submitted successfully!")
+        }
+        .alert("Error", isPresented: $showingErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    private func submitMentor() {
+        guard !mentorName.isEmpty, !specialty.isEmpty, !email.isEmpty else {
+            errorMessage = "Please fill in all required fields."
+            showingErrorAlert = true
+            return
+        }
+        
+        isSubmitting = true
+        
+        // Create the mentor data
+        let mentorData: [String: Any] = [
+            "active": true,
+            "description": bio,
+            "email": email,
+            "name": mentorName,
+            "phone": phone,
+            "specialty": specialty,
+            "experience": experience,
+            "website": website,
+            "timestamp": FieldValue.serverTimestamp()
+        ]
+        
+        // Post to Firestore
+        let db = Firestore.firestore()
+        db.collection("mentors")
+            .addDocument(data: mentorData) { error in
+                DispatchQueue.main.async {
+                    isSubmitting = false
+                    
+                    if let error = error {
+                        errorMessage = "Failed to submit mentor profile: \(error.localizedDescription)"
+                        showingErrorAlert = true
+                    } else {
+                        showingSuccessAlert = true
+                    }
+                }
+            }
+    }
+}
+
 #Preview {
     ContentView()
 }
+
+
