@@ -91,68 +91,87 @@ struct LandingPageView: View {
     @Binding var showingSignIn: Bool
     @Binding var showingCreatePassword: Bool
     
-    var body: some View {
-        ZStack {
-            // Background with subtle gradient
-            LinearGradient(
-                colors: [Color.applixyBackground, Color.applixyLight.opacity(0.3)],
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var backgroundGradient: LinearGradient {
+        if colorScheme == .light {
+            return LinearGradient(
+                colors: [Color.applixyBackground, Color.applixyLight.opacity(0.6)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .ignoresSafeArea()
+        } else {
+            return LinearGradient(
+                colors: [Color.applixyDark, Color.applixyPrimary],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+    
+    private var primaryTextColor: Color {
+        colorScheme == .light ? .applixyDark : .applixyWhite
+    }
+    
+    private var secondaryTextColor: Color {
+        colorScheme == .light ? .applixySecondary : .applixyLight
+    }
+    
+    var body: some View {
+        ZStack {
+            // Dynamic background
+            backgroundGradient
+                .ignoresSafeArea()
             
             VStack(spacing: 40) {
                 Spacer()
                 
                 // Logo Section
                 VStack(spacing: 30) {
-                    // App Logo Placeholder
                     Image("app-logo")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                            .frame(width: 120, height: 120)
-                    // App Name and Tagline
+                        .frame(width: 120, height: 120)
+                    
                     VStack(spacing: 12) {
                         Text("Applixy")
                             .font(.system(size: 30, weight: .bold))
-                            .foregroundColor(.applixyDark)
+                            .foregroundColor(primaryTextColor)
                         
-                        /*Text("Sign in to continue")
+                        // Optional subtitle if you bring it back:
+                        /*
+                        Text("Sign in to continue")
                             .font(.system(size: 20))
                             .fontWeight(.semibold)
-                            .foregroundColor(.applixyDark)
-                            */
+                            .foregroundColor(secondaryTextColor)
+                        */
                     }
                 }
-                
-                //Spacer()
                 
                 // Sign In/Sign Up Buttons
                 VStack(spacing: 16) {
-                    // Sign in with email button
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.5)) {
+                    // Sign in
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
                             showingSignIn = true
-                    }
-                }) {
+                        }
+                    }) {
                         Text("Sign in")
                             .font(.system(size: 20))
-                            //.fontWeight(.semibold)
-                    .foregroundColor(.applixyWhite)
+                            .foregroundColor(.applixyWhite)
                             .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color.applixyPrimary)
+                            .padding(.vertical, 16)
+                            .background(Color.applixyPrimary)
                             .cornerRadius(12)
                             .shadow(color: .applixyPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
-                }
+                    }
                     
-                    // Sign up button
+                    // Sign up
                     Button(action: {
                         showingCreatePassword = true
                     }) {
                         Text("Sign up")
                             .font(.system(size: 16))
-                            //.fontWeight(.semibold)
                             .foregroundColor(.applixySecondary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -166,79 +185,31 @@ struct LandingPageView: View {
                 }
                 .padding(.horizontal, 60)
                 
-                /* Sign up link
-                Button("Don't have an account? Sign up") {
-                    showingCreatePassword = true
-                }
-                .font(.subheadline)
-                .foregroundColor(.applixyPrimary)
-                .padding(.top, 8)*/
-                
-                // Or sign up with section
+                // Or continue with section
                 VStack(spacing: 20) {
-                    // Or sign up with divider
                     HStack {
                         Rectangle()
-                            .fill(Color.applixyLight)
+                            .fill(Color.applixyLight.opacity(0.7))
                             .frame(height: 1)
                         
                         Text("or continue with")
                             .font(.system(size: 12))
-                            .foregroundColor(.applixyDark)
+                            .foregroundColor(secondaryTextColor)
                             .padding(.horizontal, 10)
                         
                         Rectangle()
-                            .fill(Color.applixyLight)
+                            .fill(Color.applixyLight.opacity(0.7))
                             .frame(height: 1)
                     }
                     .padding(.horizontal, 18)
                     
-                    // Social media buttons
                     HStack(spacing: 16) {
-                        // Facebook button
-                        Button(action: {
-                            // Facebook sign up action
-                        }) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.applixyWhite)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.applixySecondary, lineWidth: 1)
-                                    )
-                                    .frame(width: 60, height: 60)
-                                
-                                Text("f")
-                            .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.applixyPrimary)
-                            }
-                        }
-                        
-                        // Google button
-                        Button(action: {
-                            // Google sign up action
-                        }) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color.applixyWhite)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.applixySecondary, lineWidth: 1)
-                                    )
-                                    .frame(width: 60, height: 60)
-                                
-                                Text("G")
-                            .font(.title2)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.applixyPrimary)
-                            }
-                        }
-                        
-                        // Apple button
-                        Button(action: {
-                            // Apple sign up action
-                        }) {
+                        // Facebook
+                        socialButton(label: "f")
+                        // Google
+                        socialButton(label: "G")
+                        // Apple
+                        Button(action: {}) {
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color.applixyWhite)
@@ -257,24 +228,37 @@ struct LandingPageView: View {
                     }
                 }
                 
-                // Terms and Privacy links
+                // Terms
                 HStack(spacing: 20) {
-                    Button("Terms of use") {
-                        // Terms of use action
-                    }
-                    .font(.subheadline)
-                            .foregroundColor(.applixySecondary)
-                        
-                    Button("Privacy Policy") {
-                        // Privacy policy action
-                    }
-                            .font(.subheadline)
-                            .foregroundColor(.applixySecondary)
+                    Button("Terms of use") { }
+                        .font(.subheadline)
+                        .foregroundColor(secondaryTextColor)
+                    
+                    Button("Privacy Policy") { }
+                        .font(.subheadline)
+                        .foregroundColor(secondaryTextColor)
                 }
-                
-                // Decorative elements
-                
                 .padding(.bottom, 50)
+            }
+        }
+    }
+    
+    // Small helper to keep social buttons consistent
+    private func socialButton(label: String) -> some View {
+        Button(action: {}) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.applixyWhite)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.applixySecondary, lineWidth: 1)
+                    )
+                    .frame(width: 60, height: 60)
+                
+                Text(label)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.applixyPrimary)
             }
         }
     }
@@ -338,6 +322,7 @@ struct CreatePasswordView: View {
                                     .textFieldStyle(PlainTextFieldStyle())
                                     .keyboardType(.emailAddress)
                                     .autocapitalization(.none)
+                                    .foregroundColor(.black)
                             }
                             .padding()
                             .background(Color.applixyWhite)
@@ -358,6 +343,7 @@ struct CreatePasswordView: View {
                                 
                                 SecureField("Create a password", text: $password)
                                     .textFieldStyle(PlainTextFieldStyle())
+                                    .foregroundColor(.black)
                             }
                             .padding()
                             .background(Color.applixyWhite)
@@ -378,6 +364,7 @@ struct CreatePasswordView: View {
                                 
                                 SecureField("Confirm your password", text: $confirmPassword)
                                     .textFieldStyle(PlainTextFieldStyle())
+                                    .foregroundColor(.black)
                             }
                             .padding()
                             .background(Color.applixyWhite)
@@ -913,6 +900,7 @@ struct CustomTextField: View {
                 TextField(title, text: $text)
                     .keyboardType(keyboardType)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .foregroundColor(.black)   // 👈 FORCE BLACK TEXT
             }
             .padding()
             .background(Color.applixyWhite)
