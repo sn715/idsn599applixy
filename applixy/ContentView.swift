@@ -1518,7 +1518,8 @@ struct ScholarshipUpdateCard: View {
                     Text(update.status)
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(update.statusColor == .green ? .white : .gray)
+                        //.foregroundColor(update.statusColor == .green ? .white : .gray)
+                        .foregroundColor(update.statusColor == .green ? .applixyWhite : .applixySecondary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
@@ -1622,7 +1623,9 @@ struct ScholarshipDetailView: View {
                                 .padding(.vertical, 6)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(update.statusColor == .green ? Color.green : Color.gray.opacity(0.2))
+                                        //.fill(update.statusColor == .green ? Color.green : Color.gray.opacity(0.2))
+                                        .fill(update.statusColor == .green ? Color.applixyPrimary : Color.applixyLight)
+
                                 )
                             
                             Spacer()
@@ -1640,6 +1643,7 @@ struct ScholarshipDetailView: View {
         }
         .padding(.top)
             }
+            .background(Color.applixyBackground.ignoresSafeArea())
             .navigationTitle("Scholarship Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -3195,6 +3199,15 @@ struct AddOpportunityView: View {
                                 .foregroundColor(.applixyDark)
                             
                             TextEditor(text: $description)
+                                .scrollContentBackground(.hidden)   // keeps background from going dark
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.white)
+                                .cornerRadius(10)
+
+/*
+                            TextEditor(text: $description)
                                 .frame(minHeight: 100)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
@@ -3203,8 +3216,12 @@ struct AddOpportunityView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(Color.applixyLight, lineWidth: 1)
-                                )
+                                )*/
                         }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.applixyLight)
+                            .cornerRadius(12)
                         
                         // Target Demographics
                         VStack(alignment: .leading, spacing: 8) {
@@ -3214,9 +3231,16 @@ struct AddOpportunityView: View {
                             
                             // Add new demographic
                             HStack {
+                                //TextField("Add demographic", text: $newDemographic, Color: Color.white)
+                                    //.textFieldStyle(RoundedBorderTextFieldStyle())
                                 TextField("Add demographic", text: $newDemographic)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 16) // ← horizontal padding
+                                    .padding(.vertical, 12) // ← vertical padding
+                                    .background(Color.white) // ← inner text field background
+                                    .cornerRadius(10)
+
                                 Button("Add") {
                                     if !newDemographic.isEmpty {
                                         targetDemographics.append(newDemographic)
@@ -3386,6 +3410,35 @@ struct AddOpportunityView: View {
 }
 
 // MARK: - Form Field Component
+
+struct FormField: View {
+    let title: String
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.applixyDark)
+
+            TextField(placeholder, text: $text)
+                .textFieldStyle(PlainTextFieldStyle())
+                .foregroundColor(.black)
+                .padding(.horizontal, 16)      // ← inner horizontal padding
+                .padding(.vertical, 12)        // ← inner vertical padding
+                .background(Color.white)       // ← white input background
+                .cornerRadius(10)
+        }
+        .padding(.horizontal, 16)              // ← matches your existing field layout
+        .padding(.vertical, 10)
+        .background(Color.applixyLight)        // ← outer card background
+        .cornerRadius(12)
+    }
+}
+
+/*
 struct FormField: View {
     let title: String
     let placeholder: String
@@ -3405,7 +3458,7 @@ struct FormField: View {
                 .cornerRadius(8)
         }
     }
-}
+}*/
 
 // MARK: - Category Button Component
 struct CategoryButton: View {
@@ -3574,7 +3627,15 @@ struct AddMentorView: View {
                             Text("Bio")
                                 .font(.headline)
                                 .foregroundColor(.applixyDark)
-                            
+                            TextEditor(text: $bio)
+                                 .scrollContentBackground(.hidden)   // keeps the background light in dark mode
+                                 .foregroundColor(.black)
+                                 .frame(minHeight: 120)
+                                 .padding(.horizontal, 16)
+                                 .padding(.vertical, 12)
+                                 .background(Color.white)            // ← inner white entry box
+                                 .cornerRadius(10)
+                            /*
                             TextEditor(text: $bio)
                                 .frame(minHeight: 120)
                                 .padding(.horizontal, 16)
@@ -3584,7 +3645,8 @@ struct AddMentorView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(Color.applixyLight, lineWidth: 1)
-                                )
+                                )*/
+                            
                         }
                     }
                     .padding(.horizontal, 20)
