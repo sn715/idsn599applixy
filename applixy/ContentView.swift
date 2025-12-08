@@ -47,43 +47,94 @@ extension Color {
 }
 
 struct ContentView: View {
+    @EnvironmentObject private var sessionVM: SessionViewModel
+
+    // OLD STATE (needed for onboarding flow)
     @State private var showingOnboarding = false
     @State private var showingSignIn = false
     @State private var showingCreatePassword = false
     @State private var currentStep = 0
     @State private var userProfile = UserProfileData()
     @State private var showingMainApp = false
-    @StateObject private var savedOpportunitiesManager = SavedOpportunitiesManager()
-    
+
+
     var body: some View {
-        if showingMainApp {
-            MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
-        } else if showingCreatePassword {
-            CreatePasswordView(
-                showingCreatePassword: $showingCreatePassword,
-                showingOnboarding: $showingOnboarding
-            )
-        } else if showingOnboarding {
-            OnboardingFlowView(
-                currentStep: $currentStep,
-                userProfile: $userProfile,
-                showingMainApp: $showingMainApp,
-                savedOpportunitiesManager: savedOpportunitiesManager
-            )
-        } else if showingSignIn {
-            SignInView(
-                showingMainApp: $showingMainApp,
-                showingSignIn: $showingSignIn
-            )
-        } else {
-            LandingPageView(
-                showingOnboarding: $showingOnboarding,
-                showingSignIn: $showingSignIn,
-                showingCreatePassword: $showingCreatePassword
-            )
+        Group {
+            // ==============================
+            // USER IS SIGNED IN (email OR anonymous)
+            // ==============================
+            if let user = sessionVM.currentUser {
+
+                // If onboarding is complete → go to the MAIN APP
+                if user.onboardingComplete {
+                    MainTabView()
+
+                // If onboarding view should show (triggered manually)
+                } else if showingOnboarding {
+                    OnboardingFlowView(
+                        currentStep: $currentStep,
+                        userProfile: $userProfile,
+                        showingMainApp: $showingMainApp,
+                        savedOpportunitiesManager: savedOpportunitiesManager
+                    )
+                    .onChange(of: showingMainApp) { finished in
+                        if finished {
+                            Task {
+                                try? await UserService.createUserDocument(
+                                    uid: user.uid,
+                                    email: user.email,
+                                    firstName: user.firstName,
+                                    lastName: user.lastName,
+                                    onboardingComplete: true
+                                )
+                            }
+                        }
+                    }
+
+                // Signed-in but not onboarded yet → send to onboarding
+                } else {
+                    OnboardingFlowView(
+                        currentStep: $currentStep,
+                        userProfile: $userProfile,
+                        showingMainApp: $showingMainApp,
+                        savedOpportunitiesManager: savedOpportunitiesManager
+                    )
+                }
+
+            // ==============================
+            // NOT SIGNED IN YET
+            // ==============================
+            } else if showingCreatePassword {
+                CreatePasswordView(
+                    showingCreatePassword: $showingCreatePassword,
+                    showingOnboarding: $showingOnboarding
+                )
+
+            } else if showingOnboarding {
+                OnboardingFlowView(
+                    currentStep: $currentStep,
+                    userProfile: $userProfile,
+                    showingMainApp: $showingMainApp,
+                    savedOpportunitiesManager: savedOpportunitiesManager
+                )
+
+            } else if showingSignIn {
+                SignInView(
+                    showingMainApp: $showingMainApp,
+                    showingSignIn: $showingSignIn
+                )
+
+            } else {
+                LandingPageView(
+                    showingOnboarding: $showingOnboarding,
+                    showingSignIn: $showingSignIn,
+                    showingCreatePassword: $showingCreatePassword
+                )
+            }
         }
     }
 }
+
 
 // MARK: - Landing Page View
 struct LandingPageView: View {
@@ -704,7 +755,6 @@ struct OnboardingFlowView: View {
     @Binding var currentStep: Int
     @Binding var userProfile: UserProfileData
     @Binding var showingMainApp: Bool
-    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
     
     var body: some View {
         NavigationView {
@@ -804,7 +854,7 @@ struct OnboardingFlowView: View {
             .navigationBarHidden(true)
         }
         .fullScreenCover(isPresented: $showingMainApp) {
-            MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
+            MainTabView()
         }
     }
     
@@ -1220,17 +1270,16 @@ struct InterestTag: View {
 // MARK: - Main Tab View
 struct MainTabView: View {
     @State private var selectedTab = 0
-    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
-    
+
     var body: some View {
         ZStack {
-            // Main content
+            // Main content for each tab
             Group {
                 switch selectedTab {
                 case 0:
-                    DiscoveryView(savedOpportunitiesManager: savedOpportunitiesManager)
+                    DiscoveryView()
                 case 1:
-                    SavedView(savedOpportunitiesManager: savedOpportunitiesManager)
+                    SavedOpportunitiesView()
                 case 2:
                     MentorsView()
                 case 3:
@@ -1238,19 +1287,71 @@ struct MainTabView: View {
                 case 4:
                     ResourcesView()
                 default:
-                    DiscoveryView(savedOpportunitiesManager: savedOpportunitiesManager)
+                    DiscoveryView()
                 }
             }
-            
-            // Custom Tab Bar
+
+            // Custom bottom tab bar
             VStack {
                 Spacer()
-                
-                CustomTabBar(selectedTab: $selectedTab)
+                HStack(spacing: 0) {
+                    tabButton(index: 0,
+                              systemName: "sparkles",
+                              label: "Discover")
+
+                    tabButton(index: 1,
+                              systemName: "star.fill",
+                              label: "Saved")
+
+                    tabButton(index: 2,
+                              systemName: "person.3.fill",
+                              label: "Mentors")
+
+                    tabButton(index: 3,
+                              systemName: "bell.fill",
+                              label: "Updates")
+
+                    tabButton(index: 4,
+                              systemName: "book.fill",
+                              label: "Resources")
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 10)
+                .padding(.bottom, 20)
+                .background(
+                    Color.white
+                        .shadow(color: .black.opacity(0.08),
+                                radius: 12, x: 0, y: -4)
+                )
             }
         }
     }
+
+    // MARK: - Tab Button Helper
+
+    private func tabButton(index: Int,
+                           systemName: String,
+                           label: String) -> some View {
+        Button {
+            selectedTab = index
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: systemName)
+                    .font(.system(size: 20, weight: .semibold))
+                Text(label)
+                    .font(.caption2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .foregroundColor(
+                selectedTab == index
+                ? .applixyPrimary
+                : .applixySecondary
+            )
+        }
+    }
 }
+
 
 // MARK: - Custom Tab Bar
 struct CustomTabBar: View {
@@ -1329,129 +1430,6 @@ struct TabBarButton: View {
         .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
-
-// MARK: - Saved View
-struct SavedView: View {
-    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
-    
-    var body: some View {
-            ZStack {
-                Color.applixyBackground
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                // Standard Header
-                StandardHeaderView(
-                    title: "Saved",
-                    subtitle: " "
-                )
-                
-                // Content
-                if savedOpportunitiesManager.savedOpportunities.isEmpty {
-                    VStack(spacing: 30) {
-                        Image(systemName: "star.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.applixyLight)
-                        
-                        Text("No Saved Opportunities")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.applixyDark)
-                        
-                        
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(savedOpportunitiesManager.savedOpportunities) { opportunity in
-                                SavedOpportunityCard(opportunity: opportunity, savedOpportunitiesManager: savedOpportunitiesManager)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 20)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Saved Opportunity Card
-struct SavedOpportunityCard: View {
-    let opportunity: OpportunityData
-    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
-    @State private var showingDetail = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header with title and remove button
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(opportunity.title)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.applixyDark)
-                        .lineLimit(2)
-                    
-                    Text(opportunity.type)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.applixyPrimary)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    savedOpportunitiesManager.removeOpportunity(opportunity)
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.applixySecondary)
-                }
-            }
-            
-            // Description
-            Text(opportunity.details)
-                .font(.system(size: 14))
-                .foregroundColor(.applixySecondary)
-                .lineLimit(3)
-            
-            // Deadline and link
-            HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12))
-                    Text("Due \(opportunity.deadline, formatter: dateFormatter)")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundColor(.applixySecondary)
-                
-                Spacer()
-                
-                if !opportunity.link.isEmpty {
-                    Button("View Details") {
-                        showingDetail = true
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.applixyPrimary)
-                }
-            }
-        }
-        .padding()
-        .background(Color.applixyWhite)
-        .cornerRadius(12)
-        .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
-        .sheet(isPresented: $showingDetail) {
-            OpportunityDetailView(opportunity: opportunity)
-        }
-    }
-    
-    private var dateFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter
-    }
-}
-
 // MARK: - Updates View
 struct UpdatesView: View {
     @State private var scholarshipUpdates: [ScholarshipUpdate] = []
@@ -1680,152 +1658,178 @@ struct ScholarshipDetailView: View {
 
 // MARK: - Discovery View
 struct DiscoveryView: View {
-    @ObservedObject var savedOpportunitiesManager: SavedOpportunitiesManager
+    @EnvironmentObject private var sessionVM: SessionViewModel
+    @ObservedObject private var stateService = OpportunityStateService.shared
+
     @State private var opportunities: [OpportunityData] = []
-    @State private var currentIndex = 0
-    @State private var dragOffset = CGSize.zero
+    @State private var dragOffset: CGSize = .zero
+    @State private var swipeDirection: SwipeDirection = .none
+
     @State private var showingDetail = false
     @State private var selectedOpportunity: OpportunityData?
     @State private var showingSavedAlert = false
     @State private var showingSkippedAlert = false
-    @State private var swipeDirection: SwipeDirection = .none
-    @State private var listener: ListenerRegistration?
     @State private var showingAddOpportunity = false
-    
-    
 
-    
-    var body: some View {
-        
-            ZStack {
-                Color.applixyBackground
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    
-                    HStack{
-                        // Standard Header
-                        StandardHeaderView(
-                            title: "Discover",
-                            subtitle: " "
-                        )
-                        
-                        Spacer()
-                        
-                        // Button should direct user to another pop up to add opportunities... Then when they click the submit button their opportunity should post (using the postOpportunity function)
-                        Button(action: {
-                            showingAddOpportunity = true
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(colors: [.applixyPrimary, .applixySecondary],
-                                                       startPoint: .topLeading, endPoint: .bottomTrailing)
-                                    )
-                                    .frame(width: 54, height: 54)
-                                    .shadow(color: .applixyPrimary.opacity(0.25), radius: 12, x: 0, y: 6)
-                                Image(systemName: "plus")
-                                    .font(.title)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.applixyWhite)
-                            }
-                        }
-                        .padding(.trailing, 20) // Add padding to match the reference image
-                    }
-                    .padding(.horizontal, 20) // Add horizontal padding to the entire header
-                    
-                    
-                    
-                    // Card Stack
-                    cardStackView
-                }
-            }
-            .onAppear {
-                loadOpportunities()
-            }
-            .sheet(isPresented: $showingDetail) {
-                if let opportunity = selectedOpportunity {
-                    OpportunityDetailView(opportunity: opportunity)
-                }
-            }
-            .sheet(isPresented: $showingAddOpportunity) {
-                AddOpportunityView()
-            }
-        
+    @State private var listener: ListenerRegistration?
+    @State private var loading = true
+    @State private var loadError: String?
+
+    // MARK: - Derived
+    /// Filter out anything the user has already saved or dismissed
+    private var activeOpportunities: [OpportunityData] {
+        opportunities.filter { opp in
+            !stateService.savedIds.contains(opp.id) &&
+            !stateService.dismissedIds.contains(opp.id)
+        }
     }
-    
-    
-    // MARK: - Card Stack View
+
+    private var currentOpportunity: OpportunityData? {
+        activeOpportunities.first
+    }
+
+    var body: some View {
+        ZStack {
+            Color.applixyBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // HEADER
+                HStack {
+                    StandardHeaderView(
+                        title: "Discover",
+                        subtitle: " "
+                    )
+
+                    Spacer()
+
+                    Button(action: {
+                        showingAddOpportunity = true
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.applixyPrimary, .applixySecondary],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 54, height: 54)
+                                .shadow(
+                                    color: .applixyPrimary.opacity(0.25),
+                                    radius: 12, x: 0, y: 6
+                                )
+
+                            Image(systemName: "plus")
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundColor(.applixyWhite)
+                        }
+                    }
+                    .padding(.trailing, 20)
+                }
+                .padding(.horizontal, 20)
+
+                // CARD STACK AREA
+                cardStackView
+            }
+        }
+        .onAppear {
+            loadOpportunities()
+        }
+        .onDisappear {
+            stopListening()
+        }
+        .sheet(isPresented: $showingDetail) {
+            if let opp = selectedOpportunity {
+                OpportunityDetailView(opportunity: opp)
+            }
+        }
+        .sheet(isPresented: $showingAddOpportunity) {
+            AddOpportunityView()
+        }
+    }
+
+    // MARK: - Card Stack
+
     private var cardStackView: some View {
         VStack(spacing: 0) {
-            Spacer()
-                .frame(height: 50)
-            
-            if opportunities.isEmpty {
-                emptyStateView
-            } else if currentIndex >= opportunities.count {
+            Spacer().frame(height: 50)
+
+            if loading {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Loading opportunities…")
+                        .foregroundColor(.applixySecondary)
+                        .font(.subheadline)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let err = loadError {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.orange)
+                    Text("Couldn't load opportunities")
+                        .font(.headline)
+                        .foregroundColor(.applixyDark)
+                    Text(err)
+                        .font(.footnote)
+                        .foregroundColor(.applixySecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                    Button("Retry") { loadOpportunities() }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.applixyPrimary.opacity(0.1))
+                        .cornerRadius(8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if activeOpportunities.isEmpty {
                 allCaughtUpView
-            } else {
-                let currentOpportunity = opportunities[currentIndex]
-                
+            } else if let opp = currentOpportunity {
                 VStack(spacing: 15) {
-                    // Main card - made taller
                     SwipeCardView(
-                        opportunity: currentOpportunity,
+                        opportunity: opp,
                         dragOffset: $dragOffset,
                         swipeDirection: $swipeDirection,
-                        onSwipeLeft: {
-                            skipOpportunity()
-                        },
-                        onSwipeRight: {
-                            saveOpportunity(currentOpportunity)
-                        },
-                        onHeartTap: {
-                            saveOpportunity(currentOpportunity)
-                        }
+                        onSwipeLeft: { skipOpportunity(opp) },
+                        onSwipeRight: { saveOpportunity(opp) },
+                        onHeartTap: { saveOpportunity(opp) }
                     )
                     .gesture(
                         DragGesture()
                             .onChanged { value in
-                                print("Drag changed: \(value.translation.width)")
                                 dragOffset = value.translation
                                 updateSwipeDirection(value: value)
                             }
                             .onEnded { value in
-                                print("Drag ended: \(value.translation.width)")
-                                handleSwipeGesture(value: value, opportunity: currentOpportunity)
+                                handleSwipeGesture(value: value, opportunity: opp)
                             }
                     )
-                    
-                    // Action buttons below the card
+
+                    // Bottom buttons
                     HStack(spacing: 40) {
-                        // X button (left)
-                        Button(action: {
-                            skipOpportunity()
-                        }) {
+                        Button(action: { skipOpportunity(opp) }) {
                             ZStack {
                                 Circle()
                                     .fill(Color.applixyWhite)
                                     .frame(width: 70, height: 70)
-                                    .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
-                                
+                                    .shadow(color: .applixyPrimary.opacity(0.2),
+                                            radius: 8, x: 0, y: 4)
                                 Image(systemName: "xmark")
                                     .font(.title)
                                     .fontWeight(.bold)
                                     .foregroundColor(.red)
                             }
                         }
-                        
-                        // Star button (right)
-                        Button(action: {
-                            saveOpportunity(currentOpportunity)
-                        }) {
+
+                        Button(action: { saveOpportunity(opp) }) {
                             ZStack {
                                 Circle()
                                     .fill(Color.applixyWhite)
                                     .frame(width: 70, height: 70)
-                                    .shadow(color: .applixyPrimary.opacity(0.2), radius: 8, x: 0, y: 4)
-                                
+                                    .shadow(color: .applixyPrimary.opacity(0.2),
+                                            radius: 8, x: 0, y: 4)
                                 Image(systemName: "star.fill")
                                     .font(.title)
                                     .fontWeight(.bold)
@@ -1835,33 +1839,14 @@ struct DiscoveryView: View {
                     }
                 }
             }
-            
+
             Spacer()
         }
         .padding(.horizontal, 40)
     }
-    
-    
-    // MARK: - Empty State
-    private var emptyStateView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 60))
-                .foregroundColor(.applixyLight)
-            
-            Text("No opportunities yet")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.applixyDark)
-            
-            Text("Check back later for new opportunities")
-                .foregroundColor(.applixySecondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-    }
-    
-    // MARK: - All Caught Up State
+
+    // MARK: - All Caught Up
+
     private var allCaughtUpView: some View {
         VStack(spacing: 20) {
             ZStack {
@@ -1874,18 +1859,19 @@ struct DiscoveryView: View {
                         )
                     )
                     .frame(width: 100, height: 100)
-                    .shadow(color: .applixyPrimary.opacity(0.3), radius: 20, x: 0, y: 10)
-                
+                    .shadow(color: .applixyPrimary.opacity(0.3),
+                            radius: 20, x: 0, y: 10)
+
                 Image(systemName: "checkmark")
                     .font(.system(size: 40, weight: .bold))
                     .foregroundColor(.applixyWhite)
             }
-            
+
             Text("All caught up!")
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(.applixyDark)
-            
+
             Text("You've seen all available opportunities. Check back tomorrow for new ones!")
                 .foregroundColor(.applixySecondary)
                 .multilineTextAlignment(.center)
@@ -1893,37 +1879,21 @@ struct DiscoveryView: View {
         }
         .padding()
     }
-    
-    // MARK: - Helper Functions
-    
+
+    // MARK: - Firestore loading
+
     private func loadOpportunities() {
-        // If already signed in, attach the listener immediately
-        if Auth.auth().currentUser != nil {
-            attachScholarshipListener()
-            return
-        }
+        loading = true
+        loadError = nil
 
-        // Otherwise sign in anonymously, then attach
-        Auth.auth().signInAnonymously { _, error in
-            if let error = error {
-                print("🔥 Anonymous sign-in failed: \(error.localizedDescription)")
-                return
-            }
-            print("✅ Anonymous sign-in OK")
-            attachScholarshipListener()
-        }
-    }
+        listener?.remove()
 
-    // Split out the actual listener so we can call it from both paths
-    private func attachScholarshipListener() {
-        // Start live updates from your scholarship collection
         listener = startScholarshipListener { posts in
-            print("📥 posts from listener: \(posts.count)")
             let mapped: [OpportunityData] = posts.map { p in
                 OpportunityData(
                     id: p.id,
                     title: p.name,
-                    type: "Scholarship",
+                    type: "scholarship",
                     deadline: parseDeadline(p.applicationDeadline),
                     awardAmount: formatAward(p.awardAmount),
                     eligibility: p.organization.isEmpty ? "See details" : p.organization,
@@ -1932,15 +1902,77 @@ struct DiscoveryView: View {
                     tags: []
                 )
             }
+
             DispatchQueue.main.async {
+                self.loading = false
                 self.opportunities = mapped
-                self.currentIndex = 0
-                print("✅ opportunities set: \(self.opportunities.count)")
             }
         }
     }
-    
-    // MARK: - Helpers
+
+    private func stopListening() {
+        listener?.remove()
+        listener = nil
+    }
+
+    // MARK: - Swipe helpers
+
+    private func updateSwipeDirection(value: DragGesture.Value) {
+        let threshold: CGFloat = 50
+        if abs(value.translation.width) > threshold {
+            swipeDirection = value.translation.width > 0 ? .right : .left
+        } else {
+            swipeDirection = .none
+        }
+    }
+
+    private func handleSwipeGesture(value: DragGesture.Value,
+                                   opportunity: OpportunityData) {
+        let threshold: CGFloat = 100
+
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            if abs(value.translation.width) > threshold {
+                if value.translation.width > 0 {
+                    saveOpportunity(opportunity)
+                } else {
+                    skipOpportunity(opportunity)
+                }
+            }
+            dragOffset = .zero
+            swipeDirection = .none
+        }
+    }
+
+    // MARK: - Actions
+
+    private func saveOpportunity(_ opportunity: OpportunityData) {
+        print("⭐️ Saved: \(opportunity.title)")
+        showingSavedAlert = true
+
+        // Persist per-user state
+        OpportunityStateService.shared.setSaved(
+            opportunityId: opportunity.id,
+            type: opportunity.type.lowercased()
+        )
+
+        // Drop from local queue so UI advances immediately
+        opportunities.removeAll { $0.id == opportunity.id }
+    }
+
+    private func skipOpportunity(_ opportunity: OpportunityData) {
+        print("❌ Skipped: \(opportunity.title)")
+        showingSkippedAlert = true
+
+        OpportunityStateService.shared.setDismissed(
+            opportunityId: opportunity.id,
+            type: opportunity.type.lowercased()
+        )
+
+        opportunities.removeAll { $0.id == opportunity.id }
+    }
+
+    // MARK: - Formatting helpers
+
     private func parseDeadline(_ raw: String?) -> Date {
         guard let raw = raw, !raw.isEmpty else { return Date() }
         let fmts = ["yyyy-MM-dd", "MM/dd/yyyy", "MMMM d, yyyy", "MMMM d"]
@@ -1956,7 +1988,6 @@ struct DiscoveryView: View {
                 return d
             }
         }
-        // Fallback: now (so UI still renders)
         return Date()
     }
 
@@ -1966,169 +1997,6 @@ struct DiscoveryView: View {
         nf.numberStyle = .currency
         nf.maximumFractionDigits = 0
         return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
-    }
-
-
-    /*
-    private func loadOpportunities() {
-        // Start live updates from your scholarship collection
-        listener = startScholarshipListener { posts in
-            // Map ScholarshipPost -> OpportunityData
-            let mapped: [OpportunityData] = posts.map { p in
-                OpportunityData(
-                    id: p.id,
-                    title: p.name,
-                    type: "Scholarship",
-                    deadline: parseDeadline(p.applicationDeadline),
-                    awardAmount: formatAward(p.awardAmount),
-                    eligibility: p.organization.isEmpty ? "See details" : p.organization,
-                    details: p.description,
-                    link: p.website ?? "",
-                    tags: [] // add if you later store tags in Firestore
-                )
-            }
-            DispatchQueue.main.async {
-                self.opportunities = mapped
-                self.currentIndex = 0
-            }
-        }
-    }
-
-    // If you want to stop listening (e.g., onDisappear)
-    private func stopListening() {
-        listener?.remove()
-        listener = nil
-    }
-
-    // Helpers
-    private func parseDeadline(_ raw: String?) -> Date {
-        guard let raw = raw, !raw.isEmpty else { return Date() }
-        // Try several common formats (adjust to your data)
-        let fmts = ["yyyy-MM-dd", "MM/dd/yyyy", "MMMM d, yyyy", "MMMM d"] // e.g., "November 13"
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        for f in fmts {
-            df.dateFormat = f
-            if let d = df.date(from: raw) {
-                // If no year (e.g., "November 13"), assume current year
-                if f == "MMMM d" {
-                    let y = Calendar.current.component(.year, from: Date())
-                    return Calendar.current.date(bySetting: .year, value: y, of: d) ?? d
-                }
-                return d
-            }
-        }
-        return Date()
-    }
-
-    private func formatAward(_ amount: Int?) -> String {
-        guard let amount = amount, amount > 0 else { return "" }
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.maximumFractionDigits = 0
-        return nf.string(from: NSNumber(value: amount)) ?? "$\(amount)"
-    }
-    
-    */
-/*
-    
-    private func loadOpportunities() {
-        let today = Date()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        
-        //var listener: ListenerRegistration?
-
-        // Start listening
-        listener = startScholarshipListener { posts in
-            let mapped: [OpportunityData] = posts.map { p in
-                OpportunityData(
-                    id: p.id,
-                       title: p.name,
-                       type: "Scholarship",
-                       deadline: parseDeadline(p.applicationDeadline),
-                       awardAmount: formatAward(p.awardAmount),
-                       eligibility: p.organization.isEmpty ? "See details" : p.organization,
-                       details: p.description,
-                       link: p.website ?? "",
-                       tags: []
-                )
-                
-            }
-            DispatchedQueue.main.async {
-                self.opportunities = mapped
-                self.currentIndex = 0
-            }
-            
-            print("Live update: \(posts.count) scholarships found")
-        }
-        
-    
-         
-        print("Loaded \(opportunities.count) opportunities")
-        currentIndex = 0
-    }
-    */
-    
-    private func updateSwipeDirection(value: DragGesture.Value) {
-        let threshold: CGFloat = 50
-        
-        if abs(value.translation.width) > threshold {
-            if value.translation.width > 0 {
-                swipeDirection = .right
-            } else {
-                swipeDirection = .left
-            }
-        } else {
-            swipeDirection = .none
-        }
-    }
-    
-    private func handleSwipeGesture(value: DragGesture.Value, opportunity: OpportunityData) {
-        let threshold: CGFloat = 100
-        print("Swipe gesture ended - translation: \(value.translation.width), threshold: \(threshold)")
-        
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            if abs(value.translation.width) > threshold {
-                if value.translation.width > 0 {
-                    // Swipe right - save
-                    print("Swipe right detected - saving opportunity")
-                    saveOpportunity(opportunity)
-                } else {
-                    // Swipe left - skip
-                    print("Swipe left detected - skipping opportunity")
-                    skipOpportunity()
-                }
-            } else {
-                // Return to original position
-                print("Swipe not far enough - returning to original position")
-            dragOffset = .zero
-            }
-            swipeDirection = .none
-        }
-    }
-    
-    private func saveOpportunity(_ opportunity: OpportunityData) {
-        print("Saved: \(opportunity.title)")
-        savedOpportunitiesManager.saveOpportunity(opportunity)
-        showingSavedAlert = true
-        nextOpportunity()
-    }
-    
-    private func skipOpportunity() {
-        print("Skipped opportunity")
-        showingSkippedAlert = true
-        nextOpportunity()
-    }
-    
-    private func nextOpportunity() {
-        print("Current index: \(currentIndex), Total opportunities: \(opportunities.count)")
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-            currentIndex += 1
-            dragOffset = .zero
-            swipeDirection = .none
-        }
-        print("New index: \(currentIndex)")
     }
 }
 
@@ -2158,22 +2026,6 @@ struct StandardHeaderView: View {
         .padding(.top)
     }
 }
-
-// MARK: - Shared Data Manager
-class SavedOpportunitiesManager: ObservableObject {
-    @Published var savedOpportunities: [OpportunityData] = []
-    
-    func saveOpportunity(_ opportunity: OpportunityData) {
-        if !savedOpportunities.contains(where: { $0.id == opportunity.id }) {
-            savedOpportunities.append(opportunity)
-        }
-    }
-    
-    func removeOpportunity(_ opportunity: OpportunityData) {
-        savedOpportunities.removeAll { $0.id == opportunity.id }
-    }
-}
-
 // MARK: - Data Models
 enum SwipeDirection {
     case none, left, right, up
@@ -3031,25 +2883,33 @@ struct ResourcesView: View {
                     // Content
                     if resources.isEmpty {
                         emptyStateView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         ScrollView {
-                            LazyVStack(spacing: 16) {
+                            // ✅ 2x2 grid instead of full-width list
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.flexible(), spacing: 16),
+                                    GridItem(.flexible(), spacing: 16)
+                                ],
+                                spacing: 16
+                            ) {
                                 ForEach(resources) { resource in
                                     ResourceCard(resource: resource)
                                 }
                             }
-                            .padding()
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 24)
                         }
                     }
                 }
             }
-            //.navigationTitle("Resources")
             .onAppear {
                 loadResources()
             }
         }
     }
-    
     
     // MARK: - Empty State
     private var emptyStateView: some View {
@@ -3117,52 +2977,6 @@ struct ResourcesView: View {
                 icon: "graduationcap.fill",
                 isExternal: true
             )
-            /*
-            ResourceItem(
-                id: "6",
-                title: "Khan Academy",
-                description: "Free SAT prep and academic courses",
-                url: "https://www.khanacademy.org",
-                category: "Test Prep",
-                icon: "book.fill",
-                isExternal: true
-            ),
-            ResourceItem(
-                id: "7",
-                title: "College Essay Examples",
-                description: "Successful college essay examples and analysis",
-                url: "https://www.essayforum.com",
-                category: "Writing Help",
-                icon: "doc.text.fill",
-                isExternal: true
-            ),
-            ResourceItem(
-                id: "8",
-                title: "Financial Aid Calculator",
-                description: "Estimate your financial aid eligibility",
-                url: "https://studentaid.gov/aid-estimator",
-                category: "Financial Aid",
-                icon: "calculator.fill",
-                isExternal: true
-            ),
-            ResourceItem(
-                id: "9",
-                title: "College Visit Guide",
-                description: "How to make the most of college visits",
-                url: "https://www.collegeboard.org/student/plan/college-visits",
-                category: "College Planning",
-                icon: "location.fill",
-                isExternal: true
-            ),
-            ResourceItem(
-                id: "10",
-                title: "Scholarship Application Tips",
-                description: "YouTube channel with scholarship application strategies",
-                url: "https://www.youtube.com/c/ScholarshipSystem",
-                category: "Scholarships",
-                icon: "play.circle.fill",
-                isExternal: true
-            )*/
         ]
     }
 }
@@ -3179,12 +2993,12 @@ struct ResourceItem: Identifiable {
 
 struct ResourceCard: View {
     let resource: ResourceItem
+    @Environment(\.openURL) private var openURL   // 👈 SwiftUI URL opener
     
     var body: some View {
         VStack(spacing: 0) {
             // Top image section
             ZStack(alignment: .topLeading) {
-                // Resource image background
                 Image("resource")
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -3204,7 +3018,6 @@ struct ResourceCard: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(Color.black.opacity(0.6))
                         )
-                    
                     Spacer()
                 }
                 .padding(.top, 12)
@@ -3212,8 +3025,7 @@ struct ResourceCard: View {
                 
                 // Title overlay
                 VStack(alignment: .leading, spacing: 4) {
-                Spacer()
-                
+                    Spacer()
                     Text(resource.title)
                         .font(.title2)
                         .fontWeight(.bold)
@@ -3225,44 +3037,44 @@ struct ResourceCard: View {
             
             // Content section
             VStack(alignment: .leading, spacing: 12) {
-            // Description
-            Text(resource.description)
+                // Description
+                Text(resource.description)
                     .font(.system(size: 14))
-                .foregroundColor(.applixyDark)
+                    .foregroundColor(.applixyDark)
                     .lineLimit(3)
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
-            
-            // Action Button
-            Button(action: {
-                if let url = URL(string: resource.url) {
-                    UIApplication.shared.open(url)
-                }
-            }) {
-                HStack {
-                    Text("Visit Resource")
-                        .fontWeight(.medium)
-                    
-                    if resource.isExternal {
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption)
+                
+                // Action Button
+                Button(action: {
+                    if let url = URL(string: resource.url) {
+                        openURL(url)       // 👈 use environment opener
                     }
-                }
-                .foregroundColor(.applixyWhite)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(
-                    LinearGradient(
-                        colors: [.applixyPrimary, .applixySecondary],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                }) {
+                    HStack {
+                        Text("Visit Resource")
+                            .fontWeight(.medium)
+                        
+                        if resource.isExternal {
+                            Image(systemName: "arrow.up.right")
+                                .font(.caption)
+                        }
+                    }
+                    .foregroundColor(.applixyWhite)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        LinearGradient(
+                            colors: [.applixyPrimary, .applixySecondary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .cornerRadius(20)
-            }
+                    .cornerRadius(20)
+                }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
-        }
+            }
             .background(Color.applixyWhite)
             .cornerRadius(12, corners: [.bottomLeft, .bottomRight])
         }

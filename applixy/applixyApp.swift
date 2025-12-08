@@ -7,21 +7,22 @@
 
 import SwiftUI
 import FirebaseCore
+import FirebaseAuth
 
 @main
-struct ApplixyApp: App {
+struct applixyApp: App {
+    @StateObject private var sessionVM = SessionViewModel()
+    @StateObject private var savedOpportunitiesManager = SavedOpportunitiesManager()
+
     init() {
-        // Configure exactly once
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
+        FirebaseApp.configure()
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environmentObject(sessionVM)
+                .environmentObject(savedOpportunitiesManager)
         }
     }
 }
-
-
