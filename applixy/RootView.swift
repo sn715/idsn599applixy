@@ -27,16 +27,18 @@ struct RootView: View {
                 ContentView()
             } else if (sessionVM.currentUser?.onboardingComplete ?? false) == false {
                 // Signed in but onboarding not complete
-                OnboardingFlowView(
-                    currentStep: $onboardingStep,
-                    userProfile: $userProfile,
-                    showingMainApp: $showingMainApp
-                )
-                .onAppear {
-                    // Existing user who just logged in → skip step 0
-                    if sessionVM.justLoggedInExistingUser {
-                        onboardingStep = 1
-                    } else {
+
+                if sessionVM.justLoggedInExistingUser {
+                    // 👉 Existing user logging in again → SKIP ALL ONBOARDING PANELS
+                    MainTabView()
+                } else {
+                    // 🆕 Brand-new user → show full onboarding flow
+                    OnboardingFlowView(
+                        currentStep: $onboardingStep,
+                        userProfile: $userProfile,
+                        showingMainApp: $showingMainApp,
+                    )
+                    .onAppear {
                         onboardingStep = 0
                     }
                 }

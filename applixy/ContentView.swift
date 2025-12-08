@@ -48,71 +48,28 @@ extension Color {
 
 struct ContentView: View {
     @EnvironmentObject private var sessionVM: SessionViewModel
-
+    
     // OLD STATE (needed for onboarding flow)
-    @State private var showingOnboarding = false
+    // @State private var showingOnboarding = false
     @State private var showingSignIn = false
     @State private var showingCreatePassword = false
-    @State private var currentStep = 0
-    @State private var userProfile = UserProfileData()
+    @State private var showingOnboarding = false
+    // @State private var currentStep = 0
+    // @State private var userProfile = UserProfileData()
     @State private var showingMainApp = false
-
-
+    
     var body: some View {
         Group {
-            // ==============================
             // USER IS SIGNED IN (email OR anonymous)
-            // ==============================
-            if let user = sessionVM.currentUser {
+            if sessionVM.currentUser != nil {
+                // ✅ Any signed-in user → go straight to main app
+                MainTabView()
 
-                // If onboarding is complete → go to the MAIN APP
-                if user.onboardingComplete {
-                    MainTabView()
-
-                // If onboarding view should show (triggered manually)
-                } else if showingOnboarding {
-                    OnboardingFlowView(
-                        currentStep: $currentStep,
-                        userProfile: $userProfile,
-                        showingMainApp: $showingMainApp,
-                    )
-                    .onChange(of: showingMainApp) { finished in
-                        if finished {
-                            Task {
-                                try? await UserService.createUserDocument(
-                                    uid: user.uid,
-                                    email: user.email,
-                                    firstName: user.firstName,
-                                    lastName: user.lastName,
-                                    onboardingComplete: true
-                                )
-                            }
-                        }
-                    }
-
-                // Signed-in but not onboarded yet → send to onboarding
-                } else {
-                    OnboardingFlowView(
-                        currentStep: $currentStep,
-                        userProfile: $userProfile,
-                        showingMainApp: $showingMainApp,
-                    )
-                }
-
-            // ==============================
             // NOT SIGNED IN YET
-            // ==============================
             } else if showingCreatePassword {
                 CreatePasswordView(
                     showingCreatePassword: $showingCreatePassword,
                     showingOnboarding: $showingOnboarding
-                )
-
-            } else if showingOnboarding {
-                OnboardingFlowView(
-                    currentStep: $currentStep,
-                    userProfile: $userProfile,
-                    showingMainApp: $showingMainApp,
                 )
 
             } else if showingSignIn {
@@ -130,6 +87,7 @@ struct ContentView: View {
             }
         }
     }
+
 }
 
 
@@ -551,6 +509,7 @@ struct CreatePasswordView: View {
 struct SignInView: View {
     @Binding var showingMainApp: Bool
     @Binding var showingSignIn: Bool
+    @EnvironmentObject private var sessionVM: SessionViewModel
     @State private var email = ""
     @State private var phone = ""
     @State private var password = ""
@@ -714,6 +673,7 @@ struct SignInView: View {
                 do {
                     _ = try await Auth.auth().signIn(withEmail: email, password: password)
                     await MainActor.run {
+                        sessionVM.markExistingUserLoggedIn()
                         showingMainApp = true
                     }
                 } catch {

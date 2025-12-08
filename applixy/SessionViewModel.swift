@@ -19,15 +19,15 @@ final class SessionViewModel: ObservableObject {
 
     // Optional: keep handle so you could remove the listener later if needed
     private var authListener: AuthStateDidChangeListenerHandle?
-
+    
     init() {
-        // Force a fresh session on every app launch so we ALWAYS start at login/signup.
-        do {
-            try Auth.auth().signOut()
-        } catch {
-            print("Initial signOut failed (likely fine on first run): \(error)")
+        // In SwiftUI previews, don't touch Firebase or start listeners
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            print("SessionViewModel: Running in previews — skipping Firebase setup.")
+            return
         }
 
+        // Normal app launch: begin listening for authentication changes
         listenToAuthState()
     }
 
