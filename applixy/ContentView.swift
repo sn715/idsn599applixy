@@ -75,7 +75,6 @@ struct ContentView: View {
                         currentStep: $currentStep,
                         userProfile: $userProfile,
                         showingMainApp: $showingMainApp,
-                        savedOpportunitiesManager: savedOpportunitiesManager
                     )
                     .onChange(of: showingMainApp) { finished in
                         if finished {
@@ -97,7 +96,6 @@ struct ContentView: View {
                         currentStep: $currentStep,
                         userProfile: $userProfile,
                         showingMainApp: $showingMainApp,
-                        savedOpportunitiesManager: savedOpportunitiesManager
                     )
                 }
 
@@ -115,7 +113,6 @@ struct ContentView: View {
                     currentStep: $currentStep,
                     userProfile: $userProfile,
                     showingMainApp: $showingMainApp,
-                    savedOpportunitiesManager: savedOpportunitiesManager
                 )
 
             } else if showingSignIn {

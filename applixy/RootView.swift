@@ -8,7 +8,6 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var sessionVM: SessionViewModel
-    @EnvironmentObject var savedOpportunitiesManager: SavedOpportunitiesManager
 
     @State private var onboardingStep: Int = 0
     @State private var userProfile = UserProfileData()
@@ -24,21 +23,17 @@ struct RootView: View {
                         .padding(.top, 8)
                 }
             } else if sessionVM.currentUser == nil {
-                // Always start here when app launches (we signOut in SessionViewModel.init)
-                // This should be your login / sign-up screen.
+                // Login / sign-up flow
                 ContentView()
             } else if (sessionVM.currentUser?.onboardingComplete ?? false) == false {
                 // Signed in but onboarding not complete
-                
                 OnboardingFlowView(
                     currentStep: $onboardingStep,
                     userProfile: $userProfile,
-                    showingMainApp: $showingMainApp,
-                    savedOpportunitiesManager: savedOpportunitiesManager
+                    showingMainApp: $showingMainApp
                 )
                 .onAppear {
-                    // If this is an EXISTING user who just logged in,
-                    // skip the General Info (step 0) and start at step 1.
+                    // Existing user who just logged in → skip step 0
                     if sessionVM.justLoggedInExistingUser {
                         onboardingStep = 1
                     } else {
@@ -46,8 +41,8 @@ struct RootView: View {
                     }
                 }
             } else {
-                // Fully onboarded -> main app
-                MainTabView(savedOpportunitiesManager: savedOpportunitiesManager)
+                // Fully onboarded → main app
+                MainTabView()
             }
         }
     }
@@ -56,12 +51,4 @@ struct RootView: View {
 #Preview {
     RootView()
         .environmentObject(SessionViewModel())
-        .environmentObject(SavedOpportunitiesManager())
-}
-
-
-#Preview {
-    RootView()
-        .environmentObject(SessionViewModel())
-        .environmentObject(SavedOpportunitiesManager())
 }

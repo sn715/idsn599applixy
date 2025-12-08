@@ -75,6 +75,7 @@ struct OpportunityState: Identifiable {
     }
 }
 
+
 /// Stores the current user's yes/no decisions in Firestore
 /// and exposes saved/dismissed opportunity IDs to the UI.
 final class OpportunityStateService: ObservableObject {
@@ -163,40 +164,41 @@ final class OpportunityStateService: ObservableObject {
 
     // MARK: - Public API: mark saved/dismissed
 
-    /// Mark an opportunity as saved (starred) for the current user.
-    func setSaved(opportunity: Opportunity) {
+    // MARK: - Convenience overloads used by DiscoveryView
+    /// Mark an opportunity as saved just by id + type (no full `Opportunity` model needed).
+    func setSaved(opportunityId: String, type: String) {
         guard let uid = Auth.auth().currentUser?.uid else {
-            print("⚠️ setSaved called with no logged-in user")
+            print("⚠️ setSaved(id:type:) called with no logged-in user")
             return
         }
 
-        let key = "\(uid)_\(opportunity.id)"   // unique per user + opportunity
+        let key = "\(uid)_\(opportunityId)"
         let ref = db.collection("user_opportunity_decisions").document(key)
 
         ref.setData([
             "userId": uid,
-            "opportunityId": opportunity.id,
-            "type": opportunity.type,      // assuming `Opportunity` has `type`
+            "opportunityId": opportunityId,
+            "type": type,
             "isSaved": true,
             "isDismissed": false,
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true)
     }
 
-    /// Mark an opportunity as dismissed (swiped away) for the current user.
-    func setDismissed(opportunity: Opportunity) {
+    /// Mark an opportunity as dismissed just by id + type.
+    func setDismissed(opportunityId: String, type: String) {
         guard let uid = Auth.auth().currentUser?.uid else {
-            print("⚠️ setDismissed called with no logged-in user")
+            print("⚠️ setDismissed(id:type:) called with no logged-in user")
             return
         }
 
-        let key = "\(uid)_\(opportunity.id)"
+        let key = "\(uid)_\(opportunityId)"
         let ref = db.collection("user_opportunity_decisions").document(key)
 
         ref.setData([
             "userId": uid,
-            "opportunityId": opportunity.id,
-            "type": opportunity.type,
+            "opportunityId": opportunityId,
+            "type": type,
             "isSaved": false,
             "isDismissed": true,
             "updatedAt": FieldValue.serverTimestamp()

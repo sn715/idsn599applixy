@@ -12,7 +12,6 @@ import FirebaseAuth
 @main
 struct applixyApp: App {
     @StateObject private var sessionVM = SessionViewModel()
-    @StateObject private var savedOpportunitiesManager = SavedOpportunitiesManager()
 
     init() {
         FirebaseApp.configure()
@@ -22,7 +21,7 @@ struct applixyApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(sessionVM)
-                .environmentObject(savedOpportunitiesManager)
         }
     }
 }
+
