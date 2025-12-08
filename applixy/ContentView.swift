@@ -847,35 +847,144 @@ struct UserProfileData {
 }
 
 // MARK: - Onboarding Views
+// MARK: - General Info View
 struct GeneralInfoView: View {
     @Binding var userProfile: UserProfileData
+    
+    // Local state just for editing/validating age
+    @State private var ageText: String = ""
+    @State private var ageError: String? = nil
+    
+    // MARK: - Validation Helpers
+    
+    private func isValidEmail(_ email: String) -> Bool {
+        // Simple but solid email pattern
+        let pattern = #"^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$"#
+        let predicate = NSPredicate(format: "SELF MATCHES[c] %@", pattern)
+        return predicate.evaluate(with: email)
+    }
+    
+    private func isValidLocation(_ location: String) -> Bool {
+        // e.g. "San Diego, CA" or "Los Angeles, California"
+        let pattern = #"^[^,]+,\s*[A-Za-z]{2,}$"#
+        let predicate = NSPredicate(format: "SELF MATCHES %@", pattern)
+        return predicate.evaluate(with: location)
+    }
+    
+    private var emailError: String? {
+        if userProfile.email.isEmpty { return nil } // no error if blank
+        return isValidEmail(userProfile.email) ? nil : "Enter a valid email (name@example.com)"
+    }
+    
+    private var locationError: String? {
+        if userProfile.location.isEmpty { return nil } // no error if blank
+        return isValidLocation(userProfile.location) ? nil : "Format must be City, ST"
+    }
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                CustomTextField(title: "First Name", text: $userProfile.firstName, icon: "person.fill")
-                CustomTextField(title: "Last Name", text: $userProfile.lastName, icon: "person.fill")
+                // First Name
+                CustomTextField(
+                    title: "First Name",
+                    text: $userProfile.firstName,
+                    icon: "person.fill"
+                )
                 
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.applixySecondary)
-                        .frame(width: 20)
-                    Text("Age:")
-                        .font(.headline)
-                        .foregroundColor(.applixyDark)
-                    Spacer()
-                    Stepper("\(userProfile.age)", value: $userProfile.age, in: 16...25)
-                        .accentColor(.applixyPrimary)
-        }
-        .padding()
-                .background(Color.applixyWhite)
-                .cornerRadius(12)
-                .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                // Last Name
+                CustomTextField(
+                    title: "Last Name",
+                    text: $userProfile.lastName,
+                    icon: "person.fill"
+                )
                 
-                CustomTextField(title: "Email", text: $userProfile.email, icon: "envelope.fill", keyboardType: .emailAddress)
-                CustomTextField(title: "Location (City, State)", text: $userProfile.location, icon: "location.fill")
+                // Age (editable text field instead of Stepper)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.applixySecondary)
+                            .frame(width: 20)
+                        
+                        Text("Age")
+                            .font(.headline)
+                            .foregroundColor(.applixyDark)
+                        
+                        Spacer()
+                        
+                        TextField("Age", text: $ageText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .foregroundColor(.black)   // always black text
+                            .frame(width: 60)
+                    }
+                    .padding()
+                    .background(Color.applixyWhite)
+                    .cornerRadius(12)
+                    .shadow(color: .applixyLight, radius: 4, x: 0, y: 2)
+                    
+                    if let ageError = ageError {
+                        Text(ageError)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                // Email + inline error
+                VStack(alignment: .leading, spacing: 6) {
+                    CustomTextField(
+                        title: "Email",
+                        text: $userProfile.email,
+                        icon: "envelope.fill",
+                        keyboardType: .emailAddress
+                    )
+                    
+                    if let emailError = emailError {
+                        Text(emailError)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                // Location + inline error
+                VStack(alignment: .leading, spacing: 6) {
+                    CustomTextField(
+                        title: "Location (City, State)",
+                        text: $userProfile.location,
+                        icon: "location.fill"
+                    )
+                    
+                    if let locationError = locationError {
+                        Text(locationError)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .padding()
         }
-        .padding()
+        .onAppear {
+            // Initialize age text from the stored value
+            ageText = String(userProfile.age)
+        }
+        .onChange(of: ageText) { newValue in
+            // Only allow digits
+            let filtered = newValue.filter { $0.isNumber }
+            if filtered != newValue {
+                ageText = filtered
+            }
+            
+            // If empty, don't overwrite the model, just clear error
+            guard !filtered.isEmpty else {
+                ageError = nil
+                return
+            }
+            
+            if let value = Int(filtered), (1...200).contains(value) {
+                userProfile.age = value
+                ageError = nil
+            } else {
+                ageError = "Age must be between 1 and 200"
+            }
         }
     }
 }
